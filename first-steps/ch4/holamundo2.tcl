@@ -3,7 +3,7 @@ package require Tk
 set serialPort ""
 
 # ---------------------------------------------
-# Configurar el puerto serie
+# Configure serial port
 # ---------------------------------------------
 proc serial_configure {serialPortName} {
   global serialPort
@@ -13,7 +13,7 @@ proc serial_configure {serialPortName} {
 }
 
 # ---------------------------------------------
-# Apagar/Encender el LED
+# LED on/off
 # ---------------------------------------------
 proc ledOnOff {widget} {
   global serialPort
@@ -35,7 +35,7 @@ proc ledOnOff {widget} {
 proc ui_configure {} {
   global serialPort
   
-  wm title . "Hola-Mundo1"
+  wm title . "Hello-World1"
   wm iconname . "LED"
   wm protocol . WM_DELETE_WINDOW ui_quit
   wm geometry . 300x100
