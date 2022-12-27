@@ -8,9 +8,9 @@ set uiGlobal(ingredients) {tomato cheese mushroom}
 proc create_images {} {
   global imageGlobal
   
-  image create photo imageGlobal(tomato) -file "../../img/ch3/tomato.png"
-  image create photo imageGlobal(cheese) -file "../../img/ch3/cheese.png"
-  image create photo imageGlobal(mushroom) -file "../../img/ch3/mushroom.png"
+  image create photo imageGlobal(tomato) -file "../img/ch3/tomato.png"
+  image create photo imageGlobal(cheese) -file "../img/ch3/cheese.png"
+  image create photo imageGlobal(mushroom) -file "../img/ch3/mushroom.png"
 }
 
 # ---------------------------------------------
