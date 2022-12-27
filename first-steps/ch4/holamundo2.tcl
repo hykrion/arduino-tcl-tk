@@ -13,17 +13,20 @@ proc serial_configure {serialPortName} {
 }
 
 # ---------------------------------------------
-# Enceder el LED
+# Apagar/Encender el LED
 # ---------------------------------------------
-proc ledOn {serial} { 
-  puts $serial H
-}
-
-# ---------------------------------------------
-# Apagar el LED
-# ---------------------------------------------
-proc ledOff {serial} {
-  puts $serial L
+proc ledOnOff {widget} {
+  global serialPort
+  
+  set text [$widget cget -text]
+  
+  if {$text eq On} {
+    puts $serialPort H
+    $widget configure -text Off    
+  } else {
+    puts $serialPort L
+    $widget configure -text On
+  }
 }
 
 # ---------------------------------------------
@@ -37,10 +40,8 @@ proc ui_configure {} {
   wm protocol . WM_DELETE_WINDOW ui_quit
   wm geometry . 300x100
 
-  set w1 [ttk::button .btnOn -text On -command {ledOn $serialPort}]
-  set w2 [ttk::button .btnOff -text Off -command {ledOff $serialPort}]
-  grid $w1
-  grid $w2
+  set w [ttk::button .btnOnOff -text On -command {ledOnOff .btnOnOff}]
+  grid $w
 }
 
 # ---------------------------------------------

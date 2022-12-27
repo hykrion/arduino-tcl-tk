@@ -1,9 +1,11 @@
 package require Tk
 
+source ../themes/azure/azure.tcl
+
 set serialPort ""
 
 # ---------------------------------------------
-# Configurar el puerto serie
+# Configure the serial port
 # ---------------------------------------------
 proc serial_configure {serialPortName} {
   global serialPort
@@ -13,17 +15,20 @@ proc serial_configure {serialPortName} {
 }
 
 # ---------------------------------------------
-# Enceder el LED
+# LED on/off
 # ---------------------------------------------
-proc ledOn {serial} { 
-  puts $serial H
-}
-
-# ---------------------------------------------
-# Apagar el LED
-# ---------------------------------------------
-proc ledOff {serial} {
-  puts $serial L
+proc ledOnOff {widget} {
+  global serialPort
+  
+  set text [$widget cget -text]
+  
+  if {$text eq On} {
+    puts $serialPort H
+    $widget configure -text Off    
+  } else {
+    puts $serialPort L
+    $widget configure -text On
+  }
 }
 
 # ---------------------------------------------
@@ -32,19 +37,17 @@ proc ledOff {serial} {
 proc ui_configure {} {
   global serialPort
   
-  wm title . "Hola-Mundo1"
+  wm title . "Hello-world1"
   wm iconname . "LED"
   wm protocol . WM_DELETE_WINDOW ui_quit
   wm geometry . 300x100
 
-  set w1 [ttk::button .btnOn -text On -command {ledOn $serialPort}]
-  set w2 [ttk::button .btnOff -text Off -command {ledOff $serialPort}]
-  grid $w1
-  grid $w2
+  set w [ttk::checkbutton .btnOnOff -text On -style Switch.TCheckbutton -command {ledOnOff .btnOnOff}]
+  grid $w
 }
 
 # ---------------------------------------------
-# Acciones antes de salir
+# Actions before leaving
 # ---------------------------------------------
 proc ui_quit {} {
   global serialPort
@@ -62,6 +65,8 @@ proc main {} {
   # Windows
   set serialPortName //./COM3  
   serial_configure $serialPortName
+  
+  set_theme light
   ui_configure
 }
 
