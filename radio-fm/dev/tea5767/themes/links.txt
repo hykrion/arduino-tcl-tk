@@ -1,0 +1,6 @@
+https://ttkthemes.readthedocs.io/en/latest/themes.html
+https://wiki.tcl-lang.org/page/List+of+ttk+Themes
+https://github.com/israel-dryer/ttkbootstrap
+https://github.com/rdbende/Sun-Valley-ttk-theme
+https://github.com/rdbende/Azure-ttk-theme
+https://github.com/rdbende/Forest-ttk-theme
