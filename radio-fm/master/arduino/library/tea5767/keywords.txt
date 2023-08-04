@@ -1,0 +1,25 @@
+#######################################
+# Syntax Coloring Map for TEA5767
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+TEA5767	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+getCommand  KEYWORD2
+setFrequency	KEYWORD2
+setMute       KEYWORD2
+setHighFidelity KEYWORD2
+readData  KEYWORD2
+setPllHLSI  KEYWORD2
+setVolume KEYWORD2
+getStereo KEYWORD2
+getSignalLevel  KEYWORD2
+setI2CAvailable KEYWORD2
+
