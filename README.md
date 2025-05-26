@@ -2,10 +2,10 @@
 Arduino Tcl / Tk books code
 
 # first-steps
-Here you'll find the code of [Arduino Tcl/Tk: First steps](https://www.amazon.com/Arduino-Tcl-Tk-Primeros-Spanish-ebook/dp/B0BRFYJYRW)
+Here you'll find the book in Spanish & English [Arduino Tcl/Tk: First steps](https://www.amazon.es/Arduino-Tcl-Tk-Primeros-pasos-ebook/dp/B0BRFYJYRW)
 
 # radio-fm
-Here you'll find the code of [Arduino Tcl/Tk: Radio FM](https://www.amazon.com/Arduino-Tcl-Tk-Radio-Spanish-ebook/dp/B0CDX3952J)
+Here you'll find the book in Spanish & English [Arduino Tcl/Tk: Radio FM](https://www.amazon.es/gp/product/B0CDX3952J)
 
 You can find some more info about a Starkit package at [Sourceforge](https://tcl-tk-radio-fm.sourceforge.io/en/init/index.html)
 
