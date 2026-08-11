@@ -1,6 +1,3 @@
-# TODO
-# -hacer que compruebe si tenemos datos sobre el nombre de la frecuencia que vamos mirando
-
 package require Tk
 package require inifile
 package require tea5767_driver
@@ -393,12 +390,6 @@ namespace eval tea5767_gui {
     
     set fd [::ini::open $radio(configFile) w]
     
-    # TODO
-    # probar así
-    # Configuración radio
-    # dict for {k v} [array get radio] {}
-      # ::ini::set $fd tea_config $k $v
-    # {}
     ::ini::set $fd tea_config dial $radio(dial)
     ::ini::set $fd tea_config mute $radio(mute)
     ::ini::set $fd tea_config stereo $radio(stereo)
@@ -441,15 +432,15 @@ namespace eval tea5767_gui {
     
     set w $ui(signalLevel)
 
-    if {$val < 1} {
+    if {$val < 3} {
       $w configure -image imgLev0
-    } elseif {$val < 3} {
-      $w configure -image imgLev1
     } elseif {$val < 6} {
-      $w configure -image imgLev2
+      $w configure -image imgLev1
     } elseif {$val < 9} {
-      $w configure -image imgLev3
+      $w configure -image imgLev2
     } elseif {$val < 12} {
+      $w configure -image imgLev3
+    } elseif {$val <= 15} {
       $w configure -image imgLev4
     }
   }

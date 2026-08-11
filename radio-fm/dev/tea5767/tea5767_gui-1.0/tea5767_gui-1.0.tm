@@ -416,15 +416,15 @@ namespace eval tea5767_gui {
     
     set w $ui(signalLevel)
 
-    if {$val < 1} {
+    if {$val < 3} {
       $w configure -image imgLev0
-    } elseif {$val < 3} {
-      $w configure -image imgLev1
     } elseif {$val < 6} {
-      $w configure -image imgLev2
+      $w configure -image imgLev1
     } elseif {$val < 9} {
-      $w configure -image imgLev3
+      $w configure -image imgLev2
     } elseif {$val < 12} {
+      $w configure -image imgLev3
+    } elseif {$val <= 15} {
       $w configure -image imgLev4
     }
   }
