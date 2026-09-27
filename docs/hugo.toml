@@ -1,0 +1,48 @@
+baseURL = 'https://hykrion.github.io/arduino-tcl-tk/'
+
+languageCode = 'es-es'
+title = 'Arduino Tcl/Tk'
+theme = 'relearn'
+
+defaultContentLanguage = 'es'
+defaultContentLanguageInSubdir = true
+[languages]
+  [languages.en]
+    # contentDir = 'content/en'
+    disabled = false
+    languageCode = 'en'
+    languageDirection = 'ltr'
+    languageName = 'English'
+    title = 'Project Documentation'
+    weight = 1
+    [languages.en.params]
+      subtitle = 'Reference, Tutorials, etc.'
+  [languages.es]
+    # contentDir = 'content/es'
+    disabled = false
+    languageCode = 'es'
+    languageDirection = 'ltr'
+    languageName = 'Español'
+    title = 'Documentación del proyecto'
+    weight = 2
+    [languages.es.params]
+      subtitle = 'Referencias, tutoriales, etc.'
+      
+[params]
+  math = true
+  
+[markup]
+  [markup.tableOfContents]
+    endLevel = 2
+    startLevel = 1
+  [markup.highlight]
+    style = "dracula"
+  [markup.goldmark]
+    [markup.goldmark.renderer]
+      unsafe = true
+    [markup.goldmark.extensions]
+      [markup.goldmark.extensions.passthrough]
+        enable = true
+        [markup.goldmark.extensions.passthrough.delimiters]
+          block = [['\[', '\]'], ['$$', '$$']]
+          inline = [['\(', '\)']]

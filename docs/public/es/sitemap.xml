@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>http://localhost:1313/arduino-tcl-tk/es/index.html</loc>
+    <lastmod>2026-09-27T21:33:40+02:00</lastmod>
+    <xhtml:link rel="alternate" hreflang="x-default" href="http://localhost:1313/arduino-tcl-tk/en/index.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="http://localhost:1313/arduino-tcl-tk/en/index.html" />
+    <xhtml:link rel="alternate" hreflang="es" href="http://localhost:1313/arduino-tcl-tk/es/index.html" />
+  </url>
+  <url>
+    <loc>http://localhost:1313/arduino-tcl-tk/es/primeros-pasos/index.html</loc>
+    <lastmod>2026-09-27T21:33:40+02:00</lastmod>
+  </url>
+  <url>
+    <loc>http://localhost:1313/arduino-tcl-tk/es/radio/index.html</loc>
+    <lastmod>2026-09-27T21:29:09+02:00</lastmod>
+  </url>
+  <url>
+    <loc>http://localhost:1313/arduino-tcl-tk/es/osciloscopio/index.html</loc>
+    <lastmod>2026-09-27T21:22:31+02:00</lastmod>
+  </url>
+  <url>
+    <loc>http://localhost:1313/arduino-tcl-tk/es/categories/index.html</loc>
+    <xhtml:link rel="alternate" hreflang="x-default" href="http://localhost:1313/arduino-tcl-tk/en/categories/index.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="http://localhost:1313/arduino-tcl-tk/en/categories/index.html" />
+    <xhtml:link rel="alternate" hreflang="es" href="http://localhost:1313/arduino-tcl-tk/es/categories/index.html" />
+  </url>
+  <url>
+    <loc>http://localhost:1313/arduino-tcl-tk/es/tags/index.html</loc>
+    <xhtml:link rel="alternate" hreflang="x-default" href="http://localhost:1313/arduino-tcl-tk/en/tags/index.html" />
+    <xhtml:link rel="alternate" hreflang="en" href="http://localhost:1313/arduino-tcl-tk/en/tags/index.html" />
+    <xhtml:link rel="alternate" hreflang="es" href="http://localhost:1313/arduino-tcl-tk/es/tags/index.html" />
+  </url>
+</urlset>

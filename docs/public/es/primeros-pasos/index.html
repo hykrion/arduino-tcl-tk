@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html id="R-html" lang="es" dir="ltr" itemscope itemtype="http://schema.org/Article" data-r-output-format="html">
+  <head><script src="/arduino-tcl-tk/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=arduino-tcl-tk/livereload" data-no-instant defer></script>
+    <meta charset="utf-8">
+    <meta name="viewport" content="height=device-height, width=device-width, initial-scale=1.0, minimum-scale=1.0">
+    <meta name="generator" content="Hugo 0.159.1">
+    <meta name="generator" content="Relearn 9.0.3+36307e4ed23582638ab689240ac7b427217803ee">
+    <meta name="description" content="WIP Aquí encontrarás el libro Arduino Tcl/Tk Primeros pasos">
+    <meta name="author" content="">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Primeros Pasos :: Documentación del proyecto">
+    <meta name="twitter:description" content="WIP Aquí encontrarás el libro Arduino Tcl/Tk Primeros pasos">
+    <meta property="og:url" content="http://localhost:1313/arduino-tcl-tk/es/primeros-pasos/index.html">
+    <meta property="og:site_name" content="Documentación del proyecto">
+    <meta property="og:title" content="Primeros Pasos :: Documentación del proyecto">
+    <meta property="og:description" content="WIP Aquí encontrarás el libro Arduino Tcl/Tk Primeros pasos">
+    <meta property="og:locale" content="es">
+    <meta property="og:type" content="article">
+    <meta property="article:section" content="Documentación del proyecto">
+    <meta property="article:published_time" content="2026-09-27T21:33:40+02:00">
+    <meta property="article:modified_time" content="2026-09-27T21:33:40+02:00">
+    <meta itemprop="name" content="Primeros Pasos :: Documentación del proyecto">
+    <meta itemprop="description" content="WIP Aquí encontrarás el libro Arduino Tcl/Tk Primeros pasos">
+    <meta itemprop="datePublished" content="2026-09-27T21:33:40+02:00">
+    <meta itemprop="dateModified" content="2026-09-27T21:33:40+02:00">
+    <meta itemprop="wordCount" content="9">
+    <title>Primeros Pasos :: Documentación del proyecto</title>
+    <link href="/arduino-tcl-tk/css/auto-complete/auto-complete.min.css?1790537751" rel="stylesheet">
+    <script src="/arduino-tcl-tk/js/auto-complete/auto-complete.min.js?1790537751" defer></script>
+    <script src="/arduino-tcl-tk/js/search-lunr.js?1790537751" defer></script>
+    <script src="/arduino-tcl-tk/js/search.js?1790537751" defer></script>
+    <script>
+      window.relearn = window.relearn || {};
+      window.relearn.index_js_url="/arduino-tcl-tk/searchindex.es.js?1790537751";
+    </script>
+    <script src="/arduino-tcl-tk/js/lunr/lunr.min.js?1790537751" defer></script>
+    <script src="/arduino-tcl-tk/js/lunr/lunr.stemmer.support.min.js?1790537751" defer></script>
+    <script src="/arduino-tcl-tk/js/lunr/lunr.multi.min.js?1790537751" defer></script>
+    <script src="/arduino-tcl-tk/js/lunr/lunr.es.min.js?1790537751" defer></script>
+    <script>
+      window.relearn = window.relearn || {};
+      window.relearn.contentLangs=['es'];
+    </script>
+    <link href="/arduino-tcl-tk/fonts/fontawesome/css/all.min.css?1790537751" rel="stylesheet" media="print" onload="this.media='all';this.onload=null;"><noscript><link href="/arduino-tcl-tk/fonts/fontawesome/css/all.min.css?1790537751" rel="stylesheet"></noscript>
+    <link href="/arduino-tcl-tk/css/perfect-scrollbar/perfect-scrollbar.min.css?1790537751" rel="stylesheet">
+    <link href="/arduino-tcl-tk/css/theme.css?1790537751" rel="stylesheet">
+    <link href="/arduino-tcl-tk/css/format-html.css?1790537751" rel="stylesheet" id="R-format-style">
+    <script>
+      window.relearn = window.relearn || {};
+      // configuration
+      window.relearn.min = ``;
+      window.relearn.path='\/primeros-pasos\/index.html';
+      window.relearn.relBasePath='..\/..';
+      window.relearn.relBaseUri='..\/..\/..';
+      window.relearn.absBaseUri='http:\/\/localhost:1313\/arduino-tcl-tk';
+      window.relearn.disableInlineCopyToClipboard=false;
+      window.relearn.enableBlockCodeWrap=true;
+      // translations
+      window.T_Copy_to_clipboard = `Copiar texto al portapapeles`;
+      window.T_Copied_to_clipboard = `¡Texto copiado al portapapeles!`;
+      window.T_Link_copied_to_clipboard = `¡Enlace copiado al portapapeles!`;
+      window.T_Reset_view = `Restablecer vista`;
+      window.T_View_reset = `¡Ver reajuste!`;
+      window.T_No_results_found = `No se han encontrado resultados para "{0}"`;
+      window.T_N_results_found = `{1} resultados encontrados para "{0}"`;
+      window.T_Browser_unsupported_feature = `Este navegador no admite esta función`;
+      // variant stuff
+      window.relearn.themevariants = [ 'auto' ];
+      window.relearn.customvariantprefix = "my-custom-";
+      window.relearn.changeVariant = function(variant) {
+        var oldVariant = document.documentElement.dataset.rThemeVariant;
+        window.localStorage.setItem(window.relearn.absBaseUri + "/variant", variant);
+        document.documentElement.dataset.rThemeVariant = variant;
+        if (oldVariant != variant) {
+          document.dispatchEvent( new CustomEvent('themeVariantLoaded', { detail: { variant, oldVariant } }) );
+          window.relearn.markVariant();
+        }
+      }
+      window.relearn.markVariant = function() {
+        var variant = window.localStorage.getItem(window.relearn.absBaseUri + "/variant");
+        document.querySelectorAll(".R-variantswitcher select").forEach((select) => {select.value = variant;});
+      }
+      window.relearn.initVariant = function() {
+        var variant = window.localStorage.getItem(window.relearn.absBaseUri + "/variant") ?? "";
+        if( !variant ||
+            (!variant.startsWith(window.relearn.customvariantprefix) && !window.relearn.themevariants.includes(variant)) ||
+            (variant.startsWith(window.relearn.customvariantprefix) && !window.localStorage.getItem(window.relearn.absBaseUri + "/variantstylesheet-" + variant)) ){
+          variant = window.relearn.themevariants[0];
+          window.localStorage.setItem(window.relearn.absBaseUri + "/variant", variant);
+        }
+        document.documentElement.dataset.rThemeVariant = variant;
+      }
+      window.relearn.initVariant();
+      window.relearn.markVariant();
+    </script>
+  </head>
+  <body class="mobile-support html" data-origin="/arduino-tcl-tk/es/primeros-pasos/index.html">
+    <div id="R-body" class="default-animation">
+      <div id="R-body-overlay"></div>
+      <nav id="R-topbar" class="default-animation">
+        <div class="topbar-wrapper default-animation">
+          <div class="topbar-sidebar-divider default-animation"></div>
+          <div class="topbar-area topbar-area-start" data-area="start">
+            <div class="topbar-button topbar-button-sidebar default-animation" data-content-empty="disable" data-width-s="show" data-width-m="hide" data-width-l="hide">
+<span class="btn cstyle button link noborder notitle interactive"><button onclick="toggleNav()" type="button" title="Menú (CTRL&#43;ALT&#43;n)"><i class="fa-fw fas fa-bars"></i></button></span>
+            </div>
+            <div class="topbar-button topbar-button-toc default-animation" data-content-empty="hide" data-width-s="show" data-width-m="show" data-width-l="show">
+<span class="btn cstyle button link noborder notitle interactive"><button onclick="toggleTopbarFlyout(this)" type="button" title="Tabla de contenido (CTRL&#43;ALT&#43;t)"><i class="fa-fw fas fa-table-list"></i></button></span>
+              <div class="topbar-content">
+                <div class="topbar-content-wrapper">
+<nav class="TableOfContents">
+  <ul>
+    <li>
+      <ul>
+        <li><a href="#wip">WIP</a></li>
+      </ul>
+    </li>
+  </ul>
+</nav>
+                </div>
+              </div>
+            </div>
+          </div>
+          <ol class="topbar-breadcrumbs breadcrumbs highlightable" itemscope itemtype="http://schema.org/BreadcrumbList"><li itemscope itemtype="https://schema.org/ListItem" itemprop="itemListElement" class=""><a itemprop="item" href="/arduino-tcl-tk/es/index.html"><span itemprop="name">Documentación del proyecto</span></a><meta itemprop="position" content="1">&nbsp;>&nbsp;</li><li itemscope itemtype="https://schema.org/ListItem" itemprop="itemListElement" class=""><span itemprop="name">Primeros Pasos</span><meta itemprop="position" content="2"></li>
+          </ol>
+          <div class="topbar-area topbar-area-end" data-area="end">
+            <div class="topbar-button topbar-button-prev default-animation" data-content-empty="disable" data-width-s="show" data-width-m="show" data-width-l="show">
+<span class="btn cstyle button link noborder notitle interactive"><a href="/arduino-tcl-tk/es/index.html" title="Documentación del proyecto (🡐)"><i class="fa-fw fas fa-chevron-left"></i></a></span>
+            </div>
+            <div class="topbar-button topbar-button-next default-animation" data-content-empty="disable" data-width-s="show" data-width-m="show" data-width-l="show">
+<span class="btn cstyle button link noborder notitle interactive"><a href="/arduino-tcl-tk/es/radio/index.html" title="TEA5767 Radio FM GUI (🡒)"><i class="fa-fw fas fa-chevron-right"></i></a></span>
+            </div>
+            <div class="topbar-button topbar-button-more default-animation" data-content-empty="hide" data-width-s="show" data-width-m="show" data-width-l="show">
+<span class="btn cstyle button link noborder notitle interactive"><button onclick="toggleTopbarFlyout(this)" type="button" title="Más"><i class="fa-fw fas fa-ellipsis-v"></i></button></span>
+              <div class="topbar-content">
+                <div class="topbar-content-wrapper">
+                  <div class="topbar-area topbar-area-more" data-area="more">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </nav>
+      <div id="R-main-overlay"></div>
+      <main id="R-body-inner" class="highlightable page" tabindex="-1">
+        <div class="flex-block-wrapper">
+<article class="default">
+  <header class="headline">
+  </header>
+
+<h1 id="primeros-pasos">Primeros Pasos</h1>
+
+<h2 id="wip">WIP<span class="btn cstyle anchor copyanchor scrollanchor link noborder notitle interactive"><button type="button" title="Copiar enlace al portapapeles"><i class="fa-fw fas fa-link fa-lg"></i></button></span></h2>
+<p>Aquí encontrarás el libro <a href="https://www.amazon.es/Arduino-Tcl-Tk-Primeros-pasos-ebook/dp/B0BRFYJYRW" rel="external">Arduino Tcl/Tk Primeros pasos</a></p>
+
+  <footer class="footline">
+              <i class='fa-fw fas fa-calendar'></i> 27 sept 2026
+  </footer>
+</article>
+        </div>
+      </main>
+    </div>
+    <aside id="R-sidebar" class="default-animation">
+      <div id="R-header-topbar" class="default-animation"></div>
+      <div id="R-header-wrapper" class="default-animation">
+        <a id="R-logo" class="R-default direction-row" href="/arduino-tcl-tk/es/index.html">
+          <span class="logo-title default-animation">Documentación del proyecto</span>
+        </a>
+        <search><form action="/arduino-tcl-tk/es/search/index.html" method="get">
+          <div class="searchbox default-animation">
+            <button class="search-detail" type="submit" title="Buscar (CTRL+ALT+f)"><i class="fas fa-fw fa-search"></i></button>
+            <label class="a11y-only" for="R-search-by">Buscar</label>
+            <input data-search-input id="R-search-by" name="search-by" class="search-by" type="search" placeholder="Buscar...">
+            <button class="search-clear" type="button" data-search-clear="" title="Borrar búsqueda"><i class="fas fa-fw fa-times" title="Borrar búsqueda"></i></button>
+          </div>
+        </form></search>
+      </div>
+      <div id="R-homelinks" class="default-animation homelinks">
+        <div class="R-menu-divider default-animation">
+          <hr class="padding default-animation">
+        </div>
+        <div class="R-sidebarmenu R-shortcutmenu-homelinks default-animation">
+          <ul class="space collapsible-menu">
+            <li class="" data-nav-id="/arduino-tcl-tk/es/index.html"><a class="padding" href="/arduino-tcl-tk/es/index.html"><i class="fa-fw fas fa-home"></i> Home</a></li>
+          </ul>
+        </div>
+        <div class="R-menu-divider default-animation">
+          <hr class="padding default-animation">
+        </div>
+        <div class="R-sidebarmenu R-shortcutmenu-headercontrols default-animation">
+          <ul class="">
+          </ul>
+        </div>
+        <div class="R-menu-divider default-animation">
+          <hr class="padding default-animation">
+        </div>
+      </div>
+      <div id="R-content-wrapper" class="highlightable">
+        <div class="R-sidebarmenu R-shortcutmenu-main default-animation">
+          <ul class="enlarge morespace collapsible-menu">
+            <li class="active " data-nav-id="/arduino-tcl-tk/es/primeros-pasos/index.html"><a class="padding" href="/arduino-tcl-tk/es/primeros-pasos/index.html">Primeros Pasos</a></li>
+            <li class="" data-nav-id="/arduino-tcl-tk/es/radio/index.html"><a class="padding" href="/arduino-tcl-tk/es/radio/index.html">TEA5767 Radio FM GUI</a></li>
+            <li class="" data-nav-id="/arduino-tcl-tk/es/osciloscopio/index.html"><a class="padding" href="/arduino-tcl-tk/es/osciloscopio/index.html">Osciloscopio</a></li>
+          </ul>
+        </div>
+        <div class="R-sidebarmenu R-shortcutmenu-shortcuts default-animation">
+          <ul class="space collapsible-menu">
+          </ul>
+        </div>
+        <div id="R-footer-margin" class="default-animation"></div>
+        <div class="R-menu-divider default-animation">
+          <hr class="padding default-animation">
+        </div>
+        <div class="R-sidebarmenu R-shortcutmenu-footercontrols default-animation">
+          <ul class="">
+			<li class="R-languageswitcher">
+              <div class="padding menu-control">
+                <i class="fa-fw fas fa-language"></i>
+                <span>&nbsp;</span>
+                <div class="control-style">
+                  <label class="a11y-only" for="R-select-language">Idioma</label>
+                  <select id="R-select-language">
+                    <option id="R-select-language-es" value="es" data-url="/arduino-tcl-tk/es/primeros-pasos/index.html" lang="es" selected data-selected>Español</option>
+                  </select>
+                </div>
+                <div class="clear"></div>
+              </div>
+            </li>
+          </ul>
+        </div>
+<div id="R-footer" class="default-animation"><p>Built with <a href="https://github.com/McShelby/hugo-theme-relearn" title="love"><i class="fas fa-heart"></i></a> by <a href="https://gohugo.io/">Hugo</a></p></div>
+      </div>
+    </aside>
+    <script>
+      window.MathJax = Object.assign( window.MathJax || {}, {
+        tex: {
+          inlineMath:  [['\\(', '\\)'], ['$',  '$']],  
+          displayMath: [['\\[', '\\]'], ['$$', '$$']], 
+        },
+        options: {
+          enableMenu: false 
+        }
+      }, JSON.parse("{}") );
+    </script>
+    <script id="MathJax-script" async src="/arduino-tcl-tk/js/mathjax/tex-mml-chtml.js?1790537751"></script>
+    <script src="/arduino-tcl-tk/js/perfect-scrollbar/perfect-scrollbar.min.js?1790537751" defer></script>
+    <script src="/arduino-tcl-tk/js/theme.js?1790537751" defer></script>
+    <div id="toast-container" role="status" aria-live="polite" aria-atomic="false"></div>
+  </body>
+</html>
