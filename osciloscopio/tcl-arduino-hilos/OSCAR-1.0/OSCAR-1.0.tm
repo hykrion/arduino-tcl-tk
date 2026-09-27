@@ -91,12 +91,6 @@ namespace eval OSCAR {
   proc update_times {aList} {
     variable me
     
-    set factor 1e3
-    
-    if {$me(tUnits) eq "us"} {
-      set factor 1e6
-    }
-    
     lassign $aList t1 t2 tDiff
     
     switch $me(visualizationType) {
@@ -106,14 +100,14 @@ namespace eval OSCAR {
         set me(timeDiff) [[namespace current]::Time_format $tDiff]
         
         if {abs($tDiff) > 1.0e-12} {
-          set me(timeDiffInv) [[namespace current]::Frequency_format [expr {1.0/$tDiff * $factor}]]
+          set me(timeDiffInv) [[namespace current]::Frequency_format [expr {1000.0 / abs($tDiff)}]]
         } else {
           set me(timeDiffInv) "---"
         }
       }
+      
       frequency {
         set me(c1Val) [[namespace current]::Frequency_format $t1]
-        set me(c2Val) [[namespace current]::Frequency_format $t2]
         set me(c2Val) [[namespace current]::Frequency_format $t2]
         set me(timeDiff) "--"
         set me(timeDiffInv) "--"
