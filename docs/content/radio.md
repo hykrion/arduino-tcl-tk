@@ -1,7 +1,7 @@
 +++
 date = '2026-09-27T21:29:09+02:00'
-draft = true
 title = 'TEA5767 Radio FM GUI'
+draft = false
 +++
 
 Estoy escribiendo una serie de libros, https://www.amazon.es/dp/B0CDYDVBC3 , en los que utilizo Arduino y Tcl / Tk para realizar las interfaces que controlan el hardware. Uno de esos proyectos es una radio FM mediante el popular TEA5767. Me he decidido a realizar un 'ejecutable' para posibilitar el uso del TEA5767 mediante Arduino sin la necesidad de instalar el entorno de desarrollo.

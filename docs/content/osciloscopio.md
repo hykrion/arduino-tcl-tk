@@ -1,7 +1,7 @@
 +++
 date = '2026-09-27T21:22:31+02:00'
-draft = true
 title = 'Osciloscopio'
+draft = false
 +++
 
 ## Construye tu propio osciloscopio

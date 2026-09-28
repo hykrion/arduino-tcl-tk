@@ -1,7 +1,7 @@
 +++
 date = '2026-09-27T21:33:40+02:00'
-draft = true
 title = 'Primeros Pasos'
+draft = false
 +++
 
 ## WIP
