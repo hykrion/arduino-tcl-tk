@@ -18,7 +18,7 @@ Es muy probable que si has llegado aquí, es porque tengas un TEA5767 controlado
 
 Yo he utilizado unos potenciómetros digitales para poder controlar todos los aspectos de la radio desde la GUI, pero puedes sustituirlos por unos analógicos. Estoy pensando en usar un LDR junto con un LED para poder controlarlo también digitalmente, pero aún no he realizado el montaje...
 
-![esquemático](https://a.fsdn.com/con/app/proj/tcl-tk-radio-fm/screenshots/radio-schema-digi-88844ade.png)
+![esquemático](img/radio-schema-digi.png)
 
 ## Software
 

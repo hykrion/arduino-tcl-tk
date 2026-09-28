@@ -12,7 +12,7 @@ De esa idea nacen **OSCAR** y **OSCARET**, dos proyectos desarrollados alrededor
 
 El proyecto forma parte del trabajo desarrollado para el libro [Arduino, Tcl/Tk osciloscopio](https://www.amazon.es/-/en/dp/B0HL6NBK59/), pero tanto el código fuente como los programas ejecutables pueden utilizarse gratuitamente.
 
-![OSCAR](/img/prototype-2-with-zoom.png)
+![OSCAR](img/prototype-2-with-zoom.png)
 
 ---
 
@@ -120,7 +120,7 @@ Pero el siguiente paso consiste en añadir un verdadero *front-end* de oscilosco
 
 ## Utilizando un DSO183
 
-![DSO183](/img/dso183.png)
+![DSO183](img/dso183.png)
 
 El **DSO183** es un pequeño osciloscopio autónomo muy económico.
 
@@ -175,7 +175,7 @@ Para realizar este análisis, el proyecto utiliza una **Transformada de Hartley 
 
 No se trata solamente de añadir un gráfico atractivo a la aplicación. La implementación de estas funciones permite comprender muchos de los conceptos que existen detrás de un analizador de espectro digital.
 
-![Análisis espectral de una onda cuadrada](/img/spectrogram-02.png)
+![Análisis espectral de una onda cuadrada](img/spectrogram-02.png)
 
 ---
 
@@ -197,7 +197,7 @@ También resulta muy útil para docencia y experimentación.
 
 Puedes realizar una captura, guardar las muestras y estudiar después exactamente los mismos datos sin necesidad de repetir el experimento.
 
-![CSV en Excel](/img/csv.png)
+![CSV en Excel](img/csv.png)
 
 ---
 
@@ -223,7 +223,7 @@ Quien quiera profundizar siempre puede descargar el código fuente y ver cómo e
 
 Todo este proyecto ha servido también como hilo conductor para escribir [Arduino, Tcl/Tk osciloscopio](https://www.amazon.es/-/en/dp/B0HL6NBK59/).
 
-![Libro](/img/Arduino-TclTk-Osciloscopio.jpg)
+![Libro](img/Arduino-TclTk-Osciloscopio.jpg)
 
 Si el proyecto te resulta útil y quieres apoyar su desarrollo, una forma de hacerlo es comprar el libro.
 
