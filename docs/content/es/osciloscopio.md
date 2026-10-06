@@ -1,36 +1,56 @@
 +++
 date = '2026-09-27T21:22:31+02:00'
 title = 'Osciloscopio'
+description = 'OSCAR y OSCARET: osciloscopios digitales construidos con Arduino, Tcl/Tk y hardware sencillo para aprender adquisición, procesamiento y análisis de señales.'
 draft = false
 +++
 
-## Construye tu propio osciloscopio
+{{% notice style="primary" title="Construye, utiliza y entiende tu propio osciloscopio" icon="wave-square" %}}
+**OSCAR** y **OSCARET** nacen de una misma idea: construir un osciloscopio controlado desde un ordenador utilizando **hardware sencillo y software abierto**.
 
-Un osciloscopio es una de las herramientas más útiles para experimentar con electrónica. También puede ser una magnífica excusa para aprender adquisición de datos, conversión analógica-digital, procesamiento de señales y programación.
+El objetivo no es solamente visualizar una señal, sino experimentar con adquisición de datos, conversión analógica-digital, *trigger*, procesamiento digital, análisis espectral y resolución efectiva.
+{{% /notice %}}
 
-De esa idea nacen **OSCAR** y **OSCARET**, dos proyectos desarrollados alrededor del mismo objetivo: construir un osciloscopio controlado desde un ordenador utilizando hardware sencillo y software abierto.
+{{% badge style="primary" icon="microchip" %}}Arduino UNO{{% /badge %}}
+{{% badge style="secondary" icon="code" %}}Tcl/Tk{{% /badge %}}
+{{% badge style="accent" icon="wave-square" %}}Adquisición de señales{{% /badge %}}
+{{% badge style="green" icon="chart-column" %}}DHT{{% /badge %}}
+{{% badge style="blue" %}}CA3306{{% /badge %}}
+{{% badge style="cyan" %}}DSO183{{% /badge %}}
 
-El proyecto forma parte del trabajo desarrollado para el libro [Arduino, Tcl/Tk osciloscopio](https://www.amazon.es/-/en/dp/B0HL6NBK59/), pero tanto el código fuente como los programas ejecutables pueden utilizarse gratuitamente.
+El proyecto forma parte del trabajo desarrollado para el libro **Arduino, Tcl/Tk osciloscopio**, aunque tanto el código fuente como los programas ejecutables pueden utilizarse gratuitamente.
 
-![OSCAR](img/prototype-2-with-zoom.png)
+{{% button href="https://sourceforge.net/projects/oscar-oscilloscope-arduino/" icon="download" style="primary" %}}Página del proyecto{{% /button %}}
+
+{{% button href="https://github.com/hykrion/arduino-tcl-tk/tree/main/osciloscopio" icon="code-branch" style="secondary" %}}Ver código fuente{{% /button %}}
+
+{{% button href="https://www.amazon.es/-/en/dp/B0HL6NBK59/" icon="book-open" style="accent" %}}Ver el libro{{% /button %}}
+
+![OSCAR](img/prototype-2-with-zoom.png?width=90%&classes=shadow,border)
 
 ---
 
-## OSCAR: un osciloscopio con un Arduino UNO y dos cables
+## <i class="fas fa-microchip"></i> OSCAR: un Arduino UNO y dos cables
 
 La forma más sencilla de empezar es probablemente también la más sorprendente.
 
 Necesitas:
 
-- un **Arduino UNO**;
-- un cable USB para conectarlo al ordenador;
-- dos cables para conectar la señal que quieres medir.
+- un **Arduino UNO**
+- un cable USB para conectarlo al ordenador
+- dos cables para conectar la señal que quieres medir
 
-Nada más.
+**Nada más.**
 
 El convertidor ADC del propio ATmega328P se utiliza para digitalizar la señal y el ordenador se encarga de visualizarla y analizarla.
 
 De esta forma, un Arduino UNO puede transformarse en un pequeño osciloscopio digital controlado desde el PC.
+
+{{% notice style="tip" title="La idea esencial" icon="lightbulb" %}}
+El Arduino se ocupa de adquirir las muestras y el ordenador aporta la pantalla, la interfaz gráfica y buena parte del procesamiento.
+
+Eso permite mantener el hardware extremadamente sencillo y trasladar muchas funciones al software.
+{{% /notice %}}
 
 ### ¿Qué puedes hacer?
 
@@ -44,7 +64,7 @@ Entre otras cosas, puedes:
 - estudiar el espectro de la señal
 - exportar las capturas para analizarlas posteriormente
 
-Y, sobre todo, puedes experimentar.
+Y, sobre todo, puedes **experimentar**.
 
 OSCAR no pretende sustituir a un osciloscopio profesional. Su objetivo es demostrar cuánto puede hacerse con hardware extremadamente sencillo y permitir entender qué ocurre realmente dentro de un instrumento de medida digital.
 
@@ -66,16 +86,17 @@ A cambio, para señales digitales, sensores, pequeños circuitos electrónicos, 
 
 Si no dispones de entorno de desarrollo, he creado un ejecutable para que puedas usarlo también.
 
-> [!WARNING]
-> El programa está pensado para usarlo con **Arduino UNO original**.
->
-> De todas formas, si tienes un clón, también puedes usarlo, pero tendrás que indicar tu puerto serie en el fichero *serial_port.txt*. Por ejemplo COM8.
->
-> Yo recomiendo utilizar Arduino UNO original porque los clones tienden a fallar en su comunicación serie y pueden llegar a dejar de enviar datos al programa. Con el original NUNCA he tenido ese problema.
+{{% notice style="warning" title="Arduino UNO original y clones" icon="triangle-exclamation" %}}
+El programa está pensado para usarlo con **Arduino UNO original**.
+
+Si tienes un clon también puedes usarlo, pero tendrás que indicar tu puerto serie en el fichero `serial_port.txt`. Por ejemplo: `COM8`.
+
+Yo recomiendo utilizar Arduino UNO original porque los clones tienden a fallar en su comunicación serie y pueden llegar a dejar de enviar datos al programa. Con el original nunca he tenido ese problema.
+{{% /notice %}}
 
 ---
 
-## No es una caja negra
+## <i class="fas fa-flask"></i> No es una caja negra
 
 Una de las principales características del proyecto es que **puedes estudiar cómo funciona**.
 
@@ -83,32 +104,32 @@ OSCAR no es solamente un programa que dibuja una señal en la pantalla.
 
 El proyecto permite experimentar con cuestiones como:
 
-- frecuencia de muestreo
-- conversión analógica-digital
-- cuantificación
-- resolución
-- disparo o *trigger*
-- buffers de adquisición
-- comunicación serie
-- procesamiento digital de señales
-- transformadas espectrales
-- ventanas
-- ruido
-- SINAD
-- ENOB
+{{% badge style="primary" %}}Frecuencia de muestreo{{% /badge %}}
+{{% badge style="secondary" %}}ADC{{% /badge %}}
+{{% badge style="accent" %}}Cuantificación{{% /badge %}}
+{{% badge style="green" %}}Trigger{{% /badge %}}
+{{% badge style="blue" %}}Buffers{{% /badge %}}
+{{% badge style="cyan" %}}Comunicación serie{{% /badge %}}
+{{% badge style="primary" %}}Ventanas{{% /badge %}}
+{{% badge style="secondary" %}}Ruido{{% /badge %}}
+{{% badge style="accent" %}}SINAD{{% /badge %}}
+{{% badge style="green" %}}ENOB{{% /badge %}}
 
-Es, por tanto, tanto un instrumento como una plataforma de aprendizaje.
+También permite estudiar procesamiento digital de señales y transformadas espectrales.
+
+Es, por tanto, tanto un **instrumento** como una **plataforma de aprendizaje**.
 
 Puedes modificar el código, hacer pruebas, equivocarte y comprobar qué ocurre.
 
-Aquí puedes ver diferentes vídeos de OSCAR:
+### OSCAR en funcionamiento
 
-[![OSCAR usando 150 ksps](http://img.youtube.com/vi/3-EdI-dnPAk/0.jpg)](https://youtu.be/3-EdI-dnPAk)
-[![OSCAR usando nuevas ventanas espectrales](http://img.youtube.com/vi/vmnMHsvalro/0.jpg)](https://youtu.be/vmnMHsvalro)
+[![OSCAR usando 150 ksps](http://img.youtube.com/vi/3-EdI-dnPAk/0.jpg?lightbox=false)](https://youtu.be/3-EdI-dnPAk)
+
+[![OSCAR usando nuevas ventanas espectrales](http://img.youtube.com/vi/vmnMHsvalro/0.jpg?lightbox=false)](https://youtu.be/vmnMHsvalro)
 
 ---
 
-## ¿Y si quieres algo más parecido a un osciloscopio real?
+## <i class="fas fa-gauge-high"></i> ¿Y si quieres algo más parecido a un osciloscopio real?
 
 Aquí entra en juego **OSCARET**.
 
@@ -116,11 +137,15 @@ La filosofía sigue siendo la misma: utilizar el ordenador para proporcionar cap
 
 Pero el siguiente paso consiste en añadir un verdadero *front-end* de osciloscopio.
 
+{{% notice style="info" title="OSCARET" icon="gauge-high" %}}
+OSCARET conserva la filosofía de OSCAR, pero amplía el hardware para acercarse mucho más al comportamiento de un osciloscopio de sobremesa.
+{{% /notice %}}
+
 ---
 
-## Utilizando un DSO183
+## <i class="fas fa-screwdriver-wrench"></i> Utilizando un DSO183
 
-![DSO183](img/dso183.png)
+![DSO183](img/dso183.png?width=55%&classes=shadow,border,right)
 
 El **DSO183** es un pequeño osciloscopio autónomo muy económico.
 
@@ -146,19 +171,21 @@ Una captura deja así de ser simplemente una curva que aparece durante unos segu
 
 Puede convertirse en un conjunto de datos que puedes guardar, analizar, comparar o procesar posteriormente.
 
-Aquí puedes ver a [![OSCARET tomando muestras a 5 Msps](http://img.youtube.com/vi/kSBGkbdS5KY/0.jpg)](https://youtu.be/kSBGkbdS5KY)
+### OSCARET tomando muestras a 5 Msps
+
+[![OSCARET tomando muestras a 5 Msps](http://img.youtube.com/vi/kSBGkbdS5KY/0.jpg?lightbox=false)](https://youtu.be/kSBGkbdS5KY)
 
 ---
 
-## Análisis espectral
+## <i class="fas fa-chart-column"></i> Análisis espectral
 
-Una de las funciones que considero especialmente interesantes es poder observar una señal tanto en el dominio temporal como en el dominio frecuencial.
+Una de las funciones que considero especialmente interesantes es poder observar una señal tanto en el **dominio temporal** como en el **dominio frecuencial**.
 
 El osciloscopio permite estudiar cómo cambia una tensión con el tiempo.
 
 El análisis espectral permite responder a otra pregunta:
 
-¿Qué frecuencias contiene esa señal?
+> **¿Qué frecuencias contiene esa señal?**
 
 Esto permite experimentar con:
 
@@ -175,33 +202,32 @@ Para realizar este análisis, el proyecto utiliza una **Transformada de Hartley 
 
 No se trata solamente de añadir un gráfico atractivo a la aplicación. La implementación de estas funciones permite comprender muchos de los conceptos que existen detrás de un analizador de espectro digital.
 
-![Análisis espectral de una onda cuadrada](img/spectrogram-02.png)
+![Análisis espectral de una onda cuadrada](img/spectrogram-02.png?width=90%&classes=shadow,border)
 
 ---
 
-## Tus datos son tuyos: exportación a CSV
+## <i class="fas fa-file-csv"></i> Tus datos son tuyos: exportación a CSV
 
 Las muestras adquiridas pueden guardarse en ficheros **CSV**.
 
 Esto permite analizarlas posteriormente con prácticamente cualquier herramienta:
 
-- LibreOffice Calc
-- Excel
-- Python
-- GNU Octave
-- MATLAB
-- R
-- programas propios
+{{% badge style="green" %}}LibreOffice Calc{{% /badge %}}
+{{% badge style="primary" %}}Excel{{% /badge %}}
+{{% badge style="secondary" %}}Python{{% /badge %}}
+{{% badge style="accent" %}}GNU Octave{{% /badge %}}
+{{% badge style="blue" %}}MATLAB{{% /badge %}}
+{{% badge style="cyan" %}}R{{% /badge %}}
 
-También resulta muy útil para docencia y experimentación.
+Y, naturalmente, también con tus propios programas.
 
-Puedes realizar una captura, guardar las muestras y estudiar después exactamente los mismos datos sin necesidad de repetir el experimento.
+Esto resulta especialmente útil para docencia y experimentación: puedes realizar una captura, guardar las muestras y estudiar después exactamente los mismos datos sin necesidad de repetir el experimento.
 
-![CSV en Excel](img/csv.png)
+![CSV en Excel](img/csv.png?width=85%&classes=shadow,border)
 
 ---
 
-## Software libre y gratuito
+## <i class="fas fa-code-branch"></i> Software libre y gratuito
 
 Todo el código desarrollado para OSCAR y OSCARET está disponible gratuitamente.
 
@@ -219,11 +245,11 @@ Quien quiera profundizar siempre puede descargar el código fuente y ver cómo e
 
 ---
 
-## El libro
+## <i class="fas fa-book-open"></i> El libro
 
-Todo este proyecto ha servido también como hilo conductor para escribir [Arduino, Tcl/Tk osciloscopio](https://www.amazon.es/-/en/dp/B0HL6NBK59/).
+![Libro](img/Arduino-TclTk-Osciloscopio.jpg?width=30%&classes=shadow,border,right)
 
-![Libro](img/Arduino-TclTk-Osciloscopio.jpg)
+Todo este proyecto ha servido también como hilo conductor para escribir **Arduino, Tcl/Tk osciloscopio**.
 
 Si el proyecto te resulta útil y quieres apoyar su desarrollo, una forma de hacerlo es comprar el libro.
 
@@ -252,13 +278,17 @@ A lo largo del proceso se estudian temas como:
 
 También intento explicar **por qué funciona**, dónde están sus límites y qué ocurre cuando intentamos llevar un hardware sencillo más allá de aquello para lo que inicialmente fue diseñado.
 
+{{% button href="https://www.amazon.es/-/en/dp/B0HL6NBK59/" icon="book-open" style="accent" %}}Ver el libro{{% /button %}}
+
 ---
 
-## Un Arduino, dos cables y una pregunta
+## <i class="fas fa-lightbulb"></i> Un Arduino, dos cables y una pregunta
 
 Una de las ideas que más me gustan de este proyecto es que puede empezar de una forma extremadamente sencilla:
 
+{{% notice style="tip" title="El punto de partida" icon="microchip" %}}
 **Arduino UNO + ordenador + dos cables.**
+{{% /notice %}}
 
 A partir de ahí aparecen preguntas:
 
@@ -273,15 +303,17 @@ A partir de ahí aparecen preguntas:
 
 OSCAR y OSCARET son, en buena medida, el resultado de intentar responder a esas preguntas.
 
-Y todavía quedan muchas por responder.
-
-## Página del proyecto
-
-[OSCAR](https://sourceforge.net/projects/oscar-oscilloscope-arduino/)
+**Y todavía quedan muchas por responder.**
 
 ---
 
-## Sobre el nombre
+## <i class="fas fa-circle-info"></i> Más información
+
+{{% button href="https://hykrion.com/post/arduino/osciloscopio-libro/" icon="circle-info" style="secondary" %}}Artículo en Hykrion{{% /button %}}
+
+---
+
+## <i class="fas fa-tag"></i> Sobre el nombre
 
 Me pareció simpático porque:
 
@@ -290,10 +322,10 @@ Me pareció simpático porque:
 
 y también porque tengo dos amigos con ese nombre :-P
 
-## Contacto
+---
 
-Si tienes alguna sugerencia o consulta, estoy disponible en: tdso112a at hykrion com
+## <i class="fas fa-envelope"></i> Contacto
 
-## Algo más de información
+Si tienes alguna sugerencia o consulta, estoy disponible en:
 
-Puedes encontrar información más detallada en [hykrion](https://hykrion.com/post/arduino/osciloscopio-libro/).
+`tdso112a at hykrion com`
