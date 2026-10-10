@@ -28,15 +28,6 @@ El proyecto forma parte del trabajo desarrollado para el libro **Arduino, Tcl/Tk
 
 ## Diferentes temas
 
-<!--
-![OSCAR classic](img/prototype-2-with-zoom.png?width=20%&classes=shadow,border)
-![OSCAR snake-1](img/skin-01.png?width=20%&classes=shadow,border)
-![OSCAR snake-2](img/skin-02.png?width=20%&classes=shadow,border)
-![OSCAR snake-3](img/skin-03.png?width=20%&classes=shadow,border)
-![OSCAR snake-4](img/skin-04.png?width=20%&classes=shadow,border)
-![OSCAR snake-5](img/skin-05.png?width=20%&classes=shadow,border)
--->
-
 <div class="oscar-grid">
   <a href="../../img/prototype-2-with-zoom.png" target="_blank">
     <img src="../../img/prototype-2-with-zoom.png" alt="OSCAR classic" class="shadow border">

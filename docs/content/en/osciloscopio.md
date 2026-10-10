@@ -30,7 +30,46 @@ The project is part of the work developed for the book **Arduino, Tcl/Tk Oscillo
 This book is currently available in **Spanish only**. An English edition is not yet available.
 {{% /notice %}}
 
-![OSCAR](img/prototype-2-with-zoom.png?width=90%&classes=shadow,border)
+## Different Skins
+
+<div class="oscar-grid">
+  <a href="../../img/prototype-2-with-zoom.png" target="_blank">
+    <img src="../../img/prototype-2-with-zoom.png" alt="OSCAR classic" class="shadow border">
+  </a>
+  <a href="../../img/skin-01.png" target="_blank">
+    <img src="../../img/skin-01.png" alt="OSCAR snake-1" class="shadow border">
+  </a>
+  <a href="../../img/skin-02.png" target="_blank">
+    <img src="../../img/skin-02.png" alt="OSCAR snake-2" class="shadow border">
+  </a>
+  <a href="../../img/skin-03.png" target="_blank">
+    <img src="../../img/skin-03.png" alt="OSCAR snake-3" class="shadow border">
+  </a>
+  <a href="../../img/skin-04.png" target="_blank">
+    <img src="../../img/skin-04.png" alt="OSCAR snake-4" class="shadow border">
+  </a>
+  <a href="../../img/skin-05.png" target="_blank">
+    <img src="../../img/skin-05.png" alt="OSCAR snake-5" class="shadow border">
+  </a>
+</div>
+
+<style>
+.oscar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 15px;
+  margin: 20px 0;
+}
+.oscar-grid img {
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+  transition: transform 0.2s ease;
+}
+.oscar-grid img:hover {
+  transform: scale(1.03);
+}
+</style>
 
 ---
 
