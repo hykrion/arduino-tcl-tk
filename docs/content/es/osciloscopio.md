@@ -26,7 +26,55 @@ El proyecto forma parte del trabajo desarrollado para el libro **Arduino, Tcl/Tk
 
 {{% button href="https://www.amazon.es/-/en/dp/B0HL6NBK59/" icon="book-open" style="accent" %}}Ver el libro{{% /button %}}
 
-![OSCAR](img/prototype-2-with-zoom.png?width=90%&classes=shadow,border)
+## Diferentes temas
+
+<!--
+![OSCAR classic](img/prototype-2-with-zoom.png?width=20%&classes=shadow,border)
+![OSCAR snake-1](img/skin-01.png?width=20%&classes=shadow,border)
+![OSCAR snake-2](img/skin-02.png?width=20%&classes=shadow,border)
+![OSCAR snake-3](img/skin-03.png?width=20%&classes=shadow,border)
+![OSCAR snake-4](img/skin-04.png?width=20%&classes=shadow,border)
+![OSCAR snake-5](img/skin-05.png?width=20%&classes=shadow,border)
+-->
+
+<div class="oscar-grid">
+  <a href="../../img/prototype-2-with-zoom.png" target="_blank">
+    <img src="../../img/prototype-2-with-zoom.png" alt="OSCAR classic" class="shadow border">
+  </a>
+  <a href="../../img/skin-01.png" target="_blank">
+    <img src="../../img/skin-01.png" alt="OSCAR snake-1" class="shadow border">
+  </a>
+  <a href="../../img/skin-02.png" target="_blank">
+    <img src="../../img/skin-02.png" alt="OSCAR snake-2" class="shadow border">
+  </a>
+  <a href="../../img/skin-03.png" target="_blank">
+    <img src="../../img/skin-03.png" alt="OSCAR snake-3" class="shadow border">
+  </a>
+  <a href="../../img/skin-04.png" target="_blank">
+    <img src="../../img/skin-04.png" alt="OSCAR snake-4" class="shadow border">
+  </a>
+  <a href="../../img/skin-05.png" target="_blank">
+    <img src="../../img/skin-05.png" alt="OSCAR snake-5" class="shadow border">
+  </a>
+</div>
+
+<style>
+.oscar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 15px;
+  margin: 20px 0;
+}
+.oscar-grid img {
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+  transition: transform 0.2s ease;
+}
+.oscar-grid img:hover {
+  transform: scale(1.03);
+}
+</style>
 
 ---
 
@@ -47,7 +95,7 @@ El convertidor ADC del propio ATmega328P se utiliza para digitalizar la señal y
 De esta forma, un Arduino UNO puede transformarse en un pequeño osciloscopio digital controlado desde el PC.
 
 {{% notice style="tip" title="La idea esencial" icon="lightbulb" %}}
-El Arduino se ocupa de adquirir las muestras y el ordenador aporta la pantalla, la interfaz gráfica y buena parte del procesamiento.
+Arduino se ocupa de adquirir las muestras y el ordenador aporta la pantalla, la interfaz gráfica y buena parte del procesamiento.
 
 Eso permite mantener el hardware extremadamente sencillo y trasladar muchas funciones al software.
 {{% /notice %}}
@@ -70,7 +118,7 @@ OSCAR no pretende sustituir a un osciloscopio profesional. Su objetivo es demost
 
 ### Una limitación importante
 
-Si utilizas directamente el Arduino UNO, las señales deben encontrarse aproximadamente dentro del intervalo:
+Si utilizas directamente Arduino UNO, las señales deben encontrarse aproximadamente dentro del intervalo:
 
 ```math
 $$
@@ -78,7 +126,7 @@ $$
 $$
 ```
 
-El Arduino no está preparado para recibir directamente tensiones negativas ni tensiones superiores a su alimentación.
+Arduino no está preparado para recibir directamente tensiones negativas ni tensiones superiores a su alimentación.
 
 Esto significa que hay que tener cuidado con las señales que se conectan.
 

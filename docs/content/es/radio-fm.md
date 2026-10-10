@@ -28,7 +28,7 @@ Este proyecto forma parte de una serie de libros en los que utilizo **Arduino y 
 
 ## <i class="fas fa-microchip"></i> Hardware
 
-Si ya tienes un **TEA5767 controlado mediante Arduino**, probablemente no necesites modificar tu montaje. Basta con conectar el Arduino al ordenador mediante USB para que la aplicación pueda comunicarse con él.
+Si ya tienes un **TEA5767 controlado mediante Arduino**, probablemente no necesites modificar tu montaje. Basta con conectar Arduino al ordenador mediante USB para que la aplicación pueda comunicarse con él.
 
 Si partes desde cero, puedes utilizar como referencia el siguiente montaje:
 
