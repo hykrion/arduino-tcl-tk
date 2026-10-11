@@ -24,11 +24,7 @@ The project is part of the work developed for the book **Arduino, Tcl/Tk Oscillo
 
 {{% button href="https://github.com/hykrion/arduino-tcl-tk/tree/main/osciloscopio" icon="code-branch" style="secondary" %}}View source code{{% /button %}}
 
-{{% button href="https://www.amazon.es/-/en/dp/B0HL6NBK59/" icon="book-open" style="accent" %}}View the book{{% /button %}}
-
-{{% notice style="accent" title="English edition" icon="language" %}}
-This book is currently available in **Spanish only**. An English edition is not yet available.
-{{% /notice %}}
+{{% button href="https://www.amazon.es/dp/B0HMNVVNSD/" icon="book-open" style="accent" %}}View the book{{% /button %}}
 
 ## Different Skins
 
