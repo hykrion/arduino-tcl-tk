@@ -317,7 +317,7 @@ Along the way, it explores topics such as:
 
 I also try to explain **why it works**, where its limits are, and what happens when we push simple hardware beyond what it was originally designed to do.
 
-{{% button href="https://www.amazon.es/-/en/dp/B0HL6NBK59/" icon="book-open" style="accent" %}}View the book{{% /button %}}
+{{% button href="https://www.amazon.es/dp/B0HMNVVNSD" icon="book-open" style="accent" %}}View the book{{% /button %}}
 
 ---
 
