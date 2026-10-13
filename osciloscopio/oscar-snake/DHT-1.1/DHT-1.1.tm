@@ -1,30 +1,47 @@
 oo::class create DHT {
   variable me
   variable m_cas  ;# m_cas($k.$n)
-  variable m_h    ;# Diccionario H_k (poder devolverlo)
-  variable m_hAvg ;# Diccionario H_k en magnitud
+  variable m_h    ;# Lista H_k
+  variable m_magnitude ;# Lista H_k en magnitud
   
   # ---------------------------------------------
-  constructor {} {
-    set m_h [dict create]
-    set m_hAvg [dict create]
+  constructor {sampleSize {dhtSize ""}} {
+    if {$dhtSize eq ""} {
+      set dhtSize $sampleSize
+    }
+    
+    if {$sampleSize < 0 || $dhtSize < $sampleSize} {
+      error "DHT constructor: $dhtSize < $sampleSize"
+    }
+    
+    set m_h {}
+    set m_magnitude {}
     
     array set me {
       adcList {}
       fs 0
       kMax 0
+      sampleSize 0
+      dhtSize 0
       windowHigh -1
       windowLow -1
       windowType none
     }
+    
+    set me(sampleSize) $sampleSize
+    set me(dhtSize) $dhtSize
     
     my Precalculate_cos_z
   }
   
   # ---------------------------------------------
   method measures_process {voltages} {
-    set VM -50.0
-    set Vm 50.0
+    if {[llength $voltages] < 0} {
+      error "measures_process: voltages empty"
+    }
+    
+    set VM [lindex $voltages 0]
+    set Vm $VM
     set sumV 0.0
     set sumV2 0.0
     set len [llength $voltages]
@@ -34,21 +51,20 @@ oo::class create DHT {
     }
     
     foreach val $voltages {
+      # NOTE Menos robusto que Robust_min_max
       if {$val > $VM} {
         set VM $val
       }
-      
       if {$val < $Vm} {
         set Vm $val
       }
-      
       set sumV  [expr {$sumV  + $val}]
       set sumV2 [expr {$sumV2 + ($val * $val)}]
     }
-    
-    set Vpp  [format %.02f [expr {$VM - $Vm}]]
-    set Vrms [format %.02f [expr {sqrt($sumV2 / $len)}]]
-    set Vavg [format %.02f [expr {$sumV / $len}]]
+    #lassign [my Robust_min_max $voltages 4 10] VM Vm
+    set Vpp  [expr {$VM - $Vm}]
+    set Vrms [expr {sqrt($sumV2 / $len)}]
+    set Vavg [expr {$sumV / $len}]
     
     return [list $VM $Vm $Vpp $Vrms $Vavg]
   }
@@ -59,7 +75,7 @@ oo::class create DHT {
     lassign $line voltages adcData fs
     
     set me(fs) $fs
-    set me(adcList) [my Zero_pad_to_1024 $adcData]
+    set me(adcList) [my Zero_pad $adcData]
     
     if {$me(windowLow) != -1 && $me(windowHigh) != -1} {
       my Apply_window $me(windowType)
@@ -68,49 +84,14 @@ oo::class create DHT {
     my Calculate_h
     set fre [my Get_frequency]
     
-    return [list $fre $m_h $m_hAvg]
+    return [list $fre $m_h $m_magnitude]
   }
   
   # ---------------------------------------------
-  method set_blackman_window_low_high {low high} {
-    set me(windowType) blackman
-    
-    my Set_window_low_high $low $high
-  }
-  
-  # ---------------------------------------------
-  method set_blackman_nuttall_window_low_high {low high} {
-    set me(windowType) blackman_nuttall
-    
-    my Set_window_low_high $low $high
-  }
-  
-  # ---------------------------------------------
-  method set_hamming_window_low_high {low high} {
-    set me(windowType) hamming
-    
-    my Set_window_low_high $low $high
-  }
-  
-  # ---------------------------------------------
-  method set_hann_window_low_high {low high} {
-    set me(windowType) hann
-    
-    my Set_window_low_high $low $high
-  }
-  
-  # ---------------------------------------------
-  method set_none_window_low_high {low high} {
-    set me(windowType) none
-    
-    my Set_window_low_high $low $high
-  }
-  
-  # ---------------------------------------------
-  method set_rectangular_window_low_high {low high} {
-    set me(windowType) rectangular
-    
-    my Set_window_low_high $low $high
+  method set_window {type low high} {
+    set me(windowType) $type
+    set me(windowLow) $low
+    set me(windowHigh) $high
   }
   
   # ---------------------------------------------
@@ -125,9 +106,10 @@ oo::class create DHT {
     set low  $me(windowLow)
     set high $me(windowHigh)
     
-    # NOTE  Evitar que no encuentre elemento en me(adcList)
-    if {$high >= 1023} {
-      set high 1023
+    set maxSample [expr {$me(sampleSize) - 1}]
+    
+    if {$high > $maxSample} {
+      set high $maxSample
     }
     
     set M [expr { $high - $low + 1 }]
@@ -139,7 +121,7 @@ oo::class create DHT {
       set sum [expr { $sum + [lindex $me(adcList) $i] }]
     }
     
-    set avg [expr { $sum/$M }]
+    set magnitude [expr { $sum/$M }]
     
     # Aplicar ventana
     for {set i 0} {$i < $N} {incr i} {
@@ -150,44 +132,44 @@ oo::class create DHT {
       
       set n [expr {$i - $low}]
       set w [my Window_value $window $n $M]
-      lset me(adcList) $i [expr { ([lindex $me(adcList) $i] - $avg)*$w }]
+      lset me(adcList) $i [expr { ([lindex $me(adcList) $i] - $magnitude)*$w }]
     }
   }
   
   # ---------------------------------------------
+  # NOTE  Con la forma actual no creo que pueda
+  #       ir más allá de 2048...
   method Calculate_h {} {
-    set k 0
     set N [my Get_N]
-    
-    # NOTE
-    # -Para calcular el promedio y obtener la frecuencia correcta
-    # -Eliminamos la componente de continua i=0
-    set i 1
-    set j $N
-    # NOTE
-    # -k máxima potencia (frecuencia fundamental)
-    set hk 0
+    set m_h {}
+    set m_magnitude {}
+    set hk 0.0
     set me(kMax) 0
     
-    while {$k < $N} {
-      # H_k
-      set partSum [my Get_bin $k]
-      dict set m_h $k $partSum
-      incr k
+    # -----------------------------------------
+    # 1. Calcular todos los bins de la DHT
+    for {set k 0} {$k < $N} {incr k} {
+      set Hk [my Get_bin $k]
+      lappend m_h $Hk
+    }
+    
+    # -----------------------------------------
+    # 2. Calcular la magnitud
+    #
+    # No usamos i=0 porque es la componente DC.
+    set half [expr {$N / 2}]
+    
+    for {set i 1} {$i <= $half} {incr i} {
+      set j [expr {$N - $i}]
+      set Hi [lindex $m_h $i]
+      set Hj [lindex $m_h $j]
+      set magnitude [expr { sqrt(($Hi*$Hi + $Hj*$Hj) / 2.0) }]
       
-      if {$i < $j} {
-        set j [expr {$N - $i}]
-        
-        set partSumI [my Get_bin $i]
-        set partSumJ [my Get_bin $j]
-        set magnitude [expr { sqrt(($partSumI*$partSumI + $partSumJ*$partSumJ) / 2.0) }]
-        dict set m_hAvg $i $magnitude
-        
-        if {$magnitude > $hk} {
-          set hk $magnitude
-          set me(kMax) $i
-        }
-        incr i
+      lappend m_magnitude $magnitude
+      
+      if {$magnitude > $hk} {
+        set hk $magnitude
+        set me(kMax) $i
       }
     }
   }
@@ -199,54 +181,57 @@ oo::class create DHT {
     set N [my Get_N]
     
     foreach xn $me(adcList) {
-      set item [expr {$xn*$m_cas($k.$n)}]
-      set sum [expr {$sum + $item}]
+      set index [expr {($k*$n) % $N}]
+      set sum [expr {$sum + $xn*$m_cas($index)}]
       incr n
     }
     
-    return [expr {(1.0*$sum)/$N}]
+    return [expr {$sum / double($N)}]
   }
   
   # ---------------------------------------------
   method Get_frequency {} {
     set result 0
     set N [my Get_N]
-    
-    if {[catch {
-      set result [expr {($me(kMax)*$me(fs))/$N}]
-    } errMsg]} {
-        #puts "Get_frequency: $errMsg"
-    }
+    set result [expr {($me(kMax)*$me(fs))/$N}]
     
     return $result
   }
   
   # ---------------------------------------------
   method Get_N {} {
-    return [llength $me(adcList)]
+    return $me(dhtSize)
   }
   
   # ---------------------------------------------
   method Precalculate_cos_z {} {
     set PI [expr {acos(-1.0)}]
-    set n 0
-    set k 0
-    #set N [my Get_N]
-    set N 1024
+    set N $me(dhtSize)
     
-    for {set k 0} {$k < $N} {incr k} {
-      for {set n 0} {$n < $N} {incr n} {
-        set z [expr {(2*$PI*$n*$k)/$N}]
-        
-        set m_cas($k.$n) [expr {sqrt(2)*cos($z - $PI/4.0)}]
-      }
+    for {set i 0} {$i < $N} {incr i} {
+      set z [expr {(2.0*$PI*$i)/$N}]
+      set m_cas($i) [expr {sqrt(2.0)*cos($z - $PI/4.0)}]
     }
   }
   
   # ---------------------------------------------
-  method Set_window_low_high {low high} {
-    set me(windowLow) $low
-    set me(windowHigh) $high
+  method Robust_min_max {values {margin 4} {count 10}} {
+    set sorted [lsort -real $values]
+    set n [llength $sorted]
+    set lowValues [lrange $sorted $margin [expr {$margin + $count - 1}]]
+    set highValues [lrange $sorted [expr {$n - $margin - $count}] [expr {$n - $margin - 1}]]
+    
+    set sumLow 0.0
+    foreach v $lowValues {
+      set sumLow [expr {$sumLow + $v}]
+    }
+    
+    set sumHigh 0.0
+    foreach v $highValues {
+      set sumHigh [expr {$sumHigh + $v}]
+    }
+    
+    return [list [expr {$sumHigh / $count}] [expr {$sumLow / $count}]]
   }
   
   # ---------------------------------------------
@@ -280,15 +265,15 @@ oo::class create DHT {
   }
   
   # ---------------------------------------------
-  method Zero_pad_to_1024 {data} {
-    # NOTE  A veces, pasan una lista mayor, y el tamaño
-    #       máximo es una precondición
-    set result [lrange $data 0 1023]
-    set n [llength $result]
+  method Zero_pad {data} {
+    set result [lrange $data 0 [expr {$me(sampleSize) - 1}]]
     
-    while {$n < 1024} {
+    if {[llength $result] < $me(sampleSize)} {
+      error "Insufficient samples: expected $me(sampleSize), got [llength $result]"
+    }
+    
+    while {[llength $result] < $me(dhtSize)} {
       lappend result 0
-      incr n
     }
     
     return $result

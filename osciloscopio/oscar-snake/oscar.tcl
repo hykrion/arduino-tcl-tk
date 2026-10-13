@@ -1,14 +1,15 @@
 #!/bin/sh
 #\
-#exec wish "$0" "$@"
+exec wish "$0" "$@"
 encoding system utf-8
 
-source ../base/utils.tcl
+source ../../base/utils.tcl
 
-add_module_path "../base"
+add_module_path "../../base"
 add_module_path "OscThread-1.0"
+add_module_path "OscilloscopeState-1.0"
 add_module_path "OSCAR-1.0"
-add_module_path "OscilloscopeDriver-1.0"
+add_module_path "OscarDriver-1.0"
 add_module_path "OscilloscopeScreen-1.1"
 add_module_path "FSM-1.0"
 add_module_path "Dialog-1.0"
@@ -38,7 +39,7 @@ proc bgerror {msg} {
 # +++++++++++++++++++++++++++++++++++++++++++++++
 # +++++++++++++++++++++++++++++++++++++++++++++++
 proc main {} {
-  # ARduino COM3 COM7
+  # ARduino COM3 COM5 COM7
   OSCAR::init //./COM3 115200
 }
 

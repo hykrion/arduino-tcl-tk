@@ -4,6 +4,7 @@ package require Thread
 
 namespace eval OscThread {
   variable me
+  variable resultCallback {}
   
   # Hilo principal y plugins
   #
@@ -26,7 +27,7 @@ namespace eval OscThread {
   }
   
   # ---------------------------------------------
-  proc init {} {
+  proc init {sampleSize {dhtSize ""}} {
     variable me
     
     set me(main) [thread::id]
@@ -37,7 +38,7 @@ namespace eval OscThread {
     # Cargar objetos dentro de los intérpretes de los workers
     set baseDir [file dirname [info script]]
     
-    [namespace current]::Init_dht $baseDir
+    [namespace current]::Init_dht $baseDir $sampleSize $dhtSize
   }
   
   # ---------------------------------------------
@@ -51,46 +52,17 @@ namespace eval OscThread {
   }
   
   # ---------------------------------------------
-  proc set_blackman_window_low_high {low high} {
-    variable me
+  proc set_result_callback {callback} {
+    variable resultCallback
     
-    thread::send -async $me(analysis) [list set_blackman_window_low_high $low $high]
+    set resultCallback $callback
   }
-  
+
   # ---------------------------------------------
-  proc set_blackman_nuttall_window_low_high {low high} {
+  proc set_window {type low high} {
     variable me
-    
-    thread::send -async $me(analysis) [list set_blackman_nuttall_window_low_high $low $high]
-  }
-  
-  # ---------------------------------------------
-  proc set_none_window_low_high {low high} {
-    variable me
-    
-    thread::send -async $me(analysis) [list set_none_window_low_high $low $high]
-  }
-  
-  # ---------------------------------------------
-  proc set_hamming_window_low_high {low high} {
-    variable me
-    
-    thread::send -async $me(analysis) [list set_hamming_window_low_high $low $high]
-  }
-  
-  # ---------------------------------------------
-  proc set_hann_window_low_high {low high} {
-    variable me
-    
-    thread::send -async $me(analysis) [list set_hann_window_low_high $low $high]
-  }
-  
-  # ---------------------------------------------
-  proc set_rectangular_window_low_high {low high} {
-    variable me
-    
-    # NOTE  Se evalúa $::dht ANTES de de hacer el thread::send
-    thread::send -async $me(analysis) [list set_rectangular_window_low_high $low $high]
+
+    thread::send -async $me(analysis) [list set_window $type $low $high]
   }
   
   # ---------------------------------------------
@@ -108,75 +80,54 @@ namespace eval OscThread {
     variable me
     
     try {
-       ::OSCAR::update_frequency_data $dhtResult
-       ::OSCAR::update_v_measures $measures
+      [namespace current]::Send_result $dhtResult $measures
     } finally {
        set me(analysisBusy) 0
     }
   }
   
   # ---------------------------------------------
-  proc Init_dht {baseDir} {
+  proc Init_dht {baseDir dhtSampleSize {dhtSize ""}} {
     variable me
     
     set pluginFile [file join $baseDir DHT-1.1/DHT-1.1.tm]
     # freewrap
-    #set dhtFile [file join $baseDir //zipfs:/app/tcl-arduino-hilos/DHT-1.1/DHT-1.1.tm]
+    #set pluginFile [file join $baseDir //zipfs:/app/exe/DHT-1.1/DHT-1.1.tm]
     thread::send $me(analysis) [list source $pluginFile]
     
     # Crear objeto DHT dentro del worker
-    thread::send $me(analysis) { set ::dht [DHT new] }
+    set dhtObj [thread::send $me(analysis) [list DHT new $dhtSampleSize $dhtSize]]
+    thread::send $me(analysis) [list set ::dht $dhtObj]
     
     # ---
     thread::send $me(analysis) {
       proc analysis_process {mainThread data} {
         try {
-          lassign $data voltages adcData fs
-          
-          set measures [$::dht measures_process $voltages]
-          set dhtResult [$::dht process $data]
-          
-          thread::send -async $mainThread [list ::OscThread::Analysis_result $dhtResult $measures]
+        lassign $data voltages adcData fs
+        
+        set measures [$::dht measures_process $voltages]
+        set dhtResult [$::dht process $data]
+        
+        thread::send -async $mainThread [list ::OscThread::Analysis_result $dhtResult $measures]
         } on error {msg options} {
             thread::send -async $mainThread [list ::OscThread::Analysis_error $msg]
           }
-        }
-    }
-    # ---
-    thread::send $me(analysis) {
-      proc set_blackman_window_low_high {low high} {
-        $::dht set_blackman_window_low_high $low $high
       }
     }
     # ---
     thread::send $me(analysis) {
-      proc set_blackman_nuttall_window_low_high {low high} {
-        $::dht set_blackman_nuttall_window_low_high $low $high
+      proc set_window {type low high} {
+        $::dht set_window $type $low $high
       }
     }
-    # ---
-    thread::send $me(analysis) {
-      proc set_hamming_window_low_high {low high} {
-        $::dht set_hamming_window_low_high $low $high
-      }
-    }
-    # ---
-    thread::send $me(analysis) {
-      proc set_hann_window_low_high {low high} {
-        $::dht set_hann_window_low_high $low $high
-      }
-    }
-    # ---
-    thread::send $me(analysis) {
-      proc set_none_window_low_high {low high} {
-        $::dht set_none_window_low_high $low $high
-      }
-    }
-    # ---
-    thread::send $me(analysis) {
-      proc set_rectangular_window_low_high {low high} {
-        $::dht set_rectangular_window_low_high $low $high
-      }
+  }
+  
+  # ---------------------------------------------
+  proc Send_result {dhtResult measures} {
+    variable resultCallback
+
+    if {$resultCallback ne ""} {
+      {*}$resultCallback $dhtResult $measures
     }
   }
 }

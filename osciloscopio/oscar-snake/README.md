@@ -12,7 +12,7 @@ This project focuses on introducing new custom skins and advanced features to **
 Here are the planned features and enhancements currently on our roadmap:
 
 - [ ] **Enhanced DHT Algorithm Integration**
-- [ ] **Multi-language Support**
+- [x] **Multi-language Support**
 - [ ] **Sigrok Integration**
 - [ ] **Spectrogram Visualization**
 - [ ] **R/W configuration:** serial port, language, etc...
@@ -43,7 +43,7 @@ Edita *proc main {}* en *oscar.tcl* para indicar el puerto de Arduino.
 Estas son las funciones y mejoras planificadas que se encuentran actualmente en nuestra hoja de ruta:
 
 - [ ] **Integración de algoritmo DHT mejorado**
-- [ ] **Soporte para varios idiomas**
+- [x] **Soporte para varios idiomas**
 - [ ] **Integración con Sigrok**
 - [ ] **Visualización de espectrograma**
 - [ ] **L/E configuración:** puerto serie, idioma, etc...
