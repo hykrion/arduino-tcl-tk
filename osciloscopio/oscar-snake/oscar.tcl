@@ -3,9 +3,9 @@
 exec wish "$0" "$@"
 encoding system utf-8
 
-source ../../base/utils.tcl
+source ../base/utils.tcl
 
-add_module_path "../../base"
+add_module_path "../base"
 add_module_path "OscThread-1.0"
 add_module_path "OscilloscopeState-1.0"
 add_module_path "OSCAR-1.0"
