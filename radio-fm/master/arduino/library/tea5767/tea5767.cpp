@@ -243,14 +243,27 @@ void TEA5767::readData()
 {
   resetCommand();
   
-  Wire.requestFrom(TEA_ADDR, TEA_I2C_BUF);
+  // Wire.requestFrom() is synchronous and returns the received bytes.
+  setI2CAvailable(0);
 
-  unsigned long time = millis();
-  while(Wire.available() < 5 && (millis() - time < 5));
+  byte received = Wire.requestFrom(TEA_ADDR, (byte)TEA_I2C_BUF);
   
-  int i;
-  for(i = 0; i < 5; i++)
-    m_I2CReadBuffer[i] = Wire.read();
+  if (received != TEA_I2C_BUF)
+  {
+    while (Wire.available())
+      Wire.read();
+    return;
+  }
+
+  for (int i = 0; i < TEA_I2C_BUF; i++)
+  {
+    int value = Wire.read();
+    
+    if (value < 0)
+      return;
+    
+    m_I2CReadBuffer[i] = (byte)value;
+  }
   setI2CAvailable(1);
 }
 
@@ -260,7 +273,7 @@ void TEA5767::readData()
   ------------------------------------------------------ */
 int TEA5767::getSignalLevel()
 {
-  int result = 0;
+  int result = -1;
   
   if(m_I2CReadReady)
   {
@@ -281,7 +294,7 @@ int TEA5767::getStereo()
   
   if(m_I2CReadReady)
   {
-    byte data = m_I2CWriteBuffer[2];
+    byte data = m_I2CReadBuffer[2];
     result = (data >> 7) & 0x01;
   }
   
