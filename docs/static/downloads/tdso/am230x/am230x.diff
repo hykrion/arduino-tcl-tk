@@ -1,0 +1,26 @@
+62c62
+<             'default': 'am230x', 'values': ('am230x', 'dht11')},
+---
+>             'default': 'am230x', 'values': ('am230x/rht', 'dht11')},
+91d90
+<         self.partial_start = False
+143,145d141
+<         # A triggered capture can begin in the tail of the host's start pulse.
+<         # This exception is allowed only at sample zero, never on resync.
+<         self.state = 'WAIT FOR INITIAL LOW'
+189,194c185
+<             if self.state == 'WAIT FOR INITIAL LOW':
+<                 self.wait({0: 'l'})
+<                 self.fall = self.samplenum
+<                 self.partial_start = self.samplenum == 0
+<                 self.state = 'WAIT FOR START HIGH'
+<             elif self.state == 'WAIT FOR START LOW':
+---
+>             if self.state == 'WAIT FOR START LOW':
+200,203c191
+<                 partial = (self.partial_start and
+<                            0 < self.samplenum - self.fall <= self.cnt['START LOW']['max'])
+<                 self.partial_start = False
+<                 if self.is_valid('START LOW') or partial:
+---
+>                 if self.is_valid('START LOW'):
