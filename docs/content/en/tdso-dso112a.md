@@ -179,8 +179,6 @@ While a spectrum shows the frequency content of a single acquisition, a spectrog
 
 It is especially useful for signals whose spectral content is not constant.
 
-**Suggested GIF:** use a signal with a changing frequency, or switch between two frequencies, to clearly show the spectral bands moving.
-
 ![Spectrogram](../../img/espectrograma.gif)
 
 ## 10. Protocol decoding with sigrok

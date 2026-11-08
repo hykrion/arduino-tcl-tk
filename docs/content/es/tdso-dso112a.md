@@ -181,8 +181,6 @@ Mientras que el espectro muestra el contenido frecuencial de una captura, el esp
 
 Es especialmente útil para señales cuyo espectro no permanece constante.
 
-**GIF recomendado:** utilizar una señal cuya frecuencia cambie o alternar entre dos frecuencias para que el desplazamiento de las bandas sea claramente visible.
-
 ![Espectrograma](../../img/espectrograma.gif)
 
 ## 10. Decodificación de protocolos con sigrok
