@@ -1,0 +1,89 @@
+# Run with: tclsh tests/dso152_driver.test
+package require tcltest 2
+namespace import ::tcltest::*
+set root [file dirname [file dirname [file normalize [info script]]]]
+proc add_module_path {path} {::tcl::tm::path add [file join $::root $path]}
+package provide SerialPort 1.0
+namespace eval ::SerialPort {
+    variable sent {}
+    variable readable {}
+    proc init {port speed} {set ::connection [list $port $speed]}
+    proc destroy {} {set ::connection {}}
+    proc send {cmd} {lappend ::SerialPort::sent $cmd}
+    proc set_readable {callback} {set ::SerialPort::readable $callback}
+    proc receive {} {return $::incoming}
+}
+source [file join $root DriverDevice.tcl]
+source [file join $root DriverFactoryModules.tcl]
+
+test factory-1 {Factory discovers and lazily loads DSO152 without Tk} -body {
+    set ::device [::DriverFactory::create DSO152 fake 115200 4]
+    list [::DriverFactory::available] $::connection [package provide Tk]
+} -result {{oscar oscaret dso152 dso112a} {fake 115200} {}}
+
+test acquisition-capacity-1 {Factory exposes acquisition size before opening a device} -body {
+    lmap hardware {oscar oscaret DSO152} {
+        dict get [::DriverFactory::get_capabilities $hardware] acquisitionSamples
+    }
+} -result {1024 1024 4096}
+
+test acquisition-long-1 {A fragmented 4096-byte capture is delivered intact} -body {
+    ::DSO152FSM::init 4096
+    set ::longFrame {}
+    ::DSO152FSM::set_result_callback {set ::longFrame}
+    ::DSO152FSM::collect_data [binary format cu* [concat {165 90 195 60} [lrepeat 1024 120]]]
+    set pending [llength $::longFrame]
+    ::DSO152FSM::collect_data [binary format cu* [lrepeat 3072 130]]
+    list $pending [llength $::longFrame] [lindex $::longFrame 1023] [lindex $::longFrame 1024]
+} -cleanup {
+    ::DSO152FSM::init 4
+} -result {0 4096 120 130}
+
+test capabilities-1 {Every advertised control has a valid serial command} -body {
+    set ::SerialPort::sent {}
+    set caps [$::device get_capabilities]
+    foreach val [dict get $caps timeBases] {$::device set_base_time $val}
+    foreach val [dict get $caps vDivs] {$::device set_v_div $val}
+    foreach val [dict get $caps couplings] {$::device set_coupling $val}
+    list $::SerialPort::sent [$::device get_fs 28us] [$::device get_fs 1ms]
+} -result {{f9 f0 f1 f2 f3 f4 f5 f6 m0 m4 m2 m6 m1 m5 m10 m9 m13 a0 a1} 1285714 35700}
+
+proc save_frame {tag frame} {lappend ::frames [list $tag $frame]}
+test acquisition-1 {Callbacks accept prefixes and multiple fragmented frames} -body {
+    set ::frames {}
+    $::device set_result_callback [list save_frame sample]
+    $::device set_usb_scope_mode on
+    foreach bytes {{165} {90 195 60 0 127} {128 255 165 90 195 60 1 2 3 4}} {
+        set ::incoming [binary format cu* $bytes]
+        eval $::SerialPort::readable
+    }
+    set ::frames
+} -result {{sample {0 127 128 255}} {sample {1 2 3 4}}}
+
+test restart-1 {Pause discards partial frames and resumes at a header} -body {
+    set ::frames {}
+    ::DSO152FSM::collect_data [binary format cu* {165 90 195 60 99}]
+    $::device set_usb_scope_mode off
+    set stopped $::SerialPort::readable
+    $::device set_usb_scope_mode on
+    ::DSO152FSM::collect_data [binary format cu* {1 2 3 165 90 195 60 5 6 7 8}]
+    list $stopped $::frames
+} -result {{} {{sample {5 6 7 8}}}}
+
+test invalid-1 {Invalid settings fail without sending commands} -body {
+    set ::SerialPort::sent {}
+    set results {}
+    foreach script {
+        {$::device set_base_time invalid}
+        {$::device set_v_div invalid}
+        {$::device set_coupling invalid}
+        {::DSO152FSM::init 0}
+    } {lappend results [catch {eval $script}]}
+    list $results $::SerialPort::sent
+} -result {{1 1 1 1} {}}
+
+test destroy-1 {Closing disconnects serial events and callbacks} -body {
+    $::device destroy
+    list $::connection $::SerialPort::readable $::DSO152FSM::m_resultCallback
+} -result {{} {} {}}
+cleanupTests

@@ -1,0 +1,67 @@
+# Exercise actual Tk startup, serial callback/FSM and canvas rendering.
+package require Tk
+wm withdraw .
+package require tcltest 2
+namespace import ::tcltest::*
+set root [file dirname [file dirname [file normalize [info script]]]]
+set ::env(TDSO_SESSION_FILE) [makeFile {} startup-session.ini]
+set ::env(OSCAR_SETTINGS_FILE) [makeFile {} startup-settings.ini]
+proc add_module_path {path} {::tcl::tm::path add [file join $::root $path]}
+foreach module {OscilloscopeState-1.0 OscilloscopeScreen-1.1 OscilloscopeTrigger-1.0 Spectrogram-1.2} {
+    source [file join $root $module $module.tm]
+}
+foreach {name version} {Dialog 1.0 OscThread 1.0 SerialPort 1.0} {
+    package provide $name $version
+}
+namespace eval SerialPort {
+    variable sent {}
+    variable readable {}
+    proc init {args} {}
+    proc destroy {} {}
+    proc send {command} {lappend ::SerialPort::sent $command}
+    proc receive {} {return $::incoming}
+    proc set_readable {callback} {set ::SerialPort::readable $callback}
+}
+namespace eval OscThread {
+    proc init {args} {}
+    proc set_result_callback {args} {}
+    proc set_window {args} {}
+    proc process_adc_data {data} {set ::analysis $data}
+}
+set ::backgroundErrors {}
+proc bgerror {message} {lappend ::backgroundErrors $message}
+source [file join $root DriverDevice.tcl]
+source [file join $root DriverFactoryModules.tcl]
+source [file join $root TDSO-1.0 TDSO-1.0.tm]
+source [file join $root tests dso152_test_helpers.tcl]
+
+test startup-1 {Real UI startup queues one ordered configuration and displays a serial frame} -body {
+    ::TDSO::init dso152 fake 115200
+    wm withdraw .
+    update idletasks
+    drain_dso152_commands
+    set ::incoming [binary format cu* [concat {165 90 195 60} [lrepeat 4096 100]]]
+    eval $::SerialPort::readable
+    set canvas .shell.body.left.scope.plot.canvas
+    list $::SerialPort::sent [llength [$canvas coords $::OscilloscopeScreen::me(line)]] \
+        [llength [lindex $::analysis 1]] $::backgroundErrors
+} -result {{f0 m10 a1 l127 s1 b0 t2} 2048 4096 {}}
+
+test startup-spectrum-1 {Actual spectrum switch sends free mode and continues accepting captures} -body {
+    set ::SerialPort::sent {}
+    ::OscilloscopeState::set_value spectrum full
+    ::TDSO::Set_spectrum_mode
+    drain_dso152_commands
+    set ::incoming [binary format cu* [concat {165 90 195 60} [lrepeat 4096 110]]]
+    eval $::SerialPort::readable
+    update idletasks
+    list $::SerialPort::sent [lindex $::TDSO::me(displayFrame) 0] $::backgroundErrors
+} -result {{l127 s1 b0 t0} 110 {}}
+
+$::TDSO::device destroy
+$::TDSO::me(signalModel) destroy
+foreach timer [after info] {after cancel $timer}
+destroy .
+removeFile startup-session.ini
+removeFile startup-settings.ini
+cleanupTests

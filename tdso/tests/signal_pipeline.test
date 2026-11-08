@@ -1,0 +1,169 @@
+# Run with: tclsh tests/signal_pipeline.test
+# Exercise real frame decoding, normalization, triggering and screen conversion.
+# Only GUI rendering and the analysis worker are replaced for headless testing.
+package require tcltest 2
+namespace import ::tcltest::*
+set root [file dirname [file dirname [file normalize [info script]]]]
+foreach module {OscilloscopeState-1.0 OscilloscopeScreen-1.1 OscilloscopeTrigger-1.0 FSM_OSCAR-1.0 FSM_OSCARET-1.0 DSO152FSM-1.0 DSO112AFSM-1.0} {
+    source [file join $root $module $module.tm]
+}
+foreach {name version} {Tk 8.6 Dialog 1.0 OscThread 1.0 Spectrogram 1.2} {
+    package provide $name $version
+}
+source [file join $root TDSO-1.0 TDSO-1.0.tm]
+proc ::TDSO::Ui_refresh_trigger_status {} {}
+proc ::OscilloscopeScreen::Draw_trace {points} {set ::points $points}
+proc ::OscilloscopeScreen::Draw_window_preview {adc} {set ::preview $adc}
+namespace eval ::OscThread {
+    proc process_adc_data {data} {set ::analysis $data}
+}
+
+proc setup_pipeline {hardware mode} {
+    catch {$::TDSO::me(signalModel) destroy}
+    set ::TDSO::me(signalModel) [::SignalModel::create $hardware]
+    set ::TDSO::me(scopeOnOff) 1
+    set ::TDSO::me(viewManual) 0
+    set ::TDSO::me(viewOffset) 0
+    set ::TDSO::me(SAMPLE_COUNT) 1024
+    ::OscilloscopeScreen::set_sample_count 1024
+    ::OscilloscopeScreen::set_signal_model $::TDSO::me(signalModel)
+    ::OscilloscopeScreen::configure_calibration {0.5 0.011111} [expr {$hardware eq "oscaret" ? 22 : 0}]
+    set ::OscilloscopeScreen::me(vScale) 0.011111
+    ::OscilloscopeState::set_value visualization $mode
+    ::OscilloscopeState::set_value coupling dc
+    ::OscilloscopeState::set_value zoomV 1
+    ::OscilloscopeState::set_value zoomT 1
+    ::OscilloscopeTrigger::init normal 127 pos 0 0
+    set ::points {}
+    set ::analysis {}
+    set ::preview {}
+}
+
+test oscaret-time-1 {ADC6 is scaled before normal trigger and plotting} -body {
+    setup_pipeline oscaret time
+    ::FSM_OSCARET::init 4
+    ::FSM_OSCARET::set_result_callback ::TDSO::frame_ready
+    # Include a serial read split inside the frame.
+    ::FSM_OSCARET::collect_data [binary format cu* {165 90 195 60 0 26}]
+    ::FSM_OSCARET::collect_data [binary format cu* {32 63}]
+    list [::OscilloscopeTrigger::get_status] $::points [lindex $::analysis 1]
+} -result {triggered {0 105 1 -19} {0 104 128 252}}
+
+test oscaret-frequency-1 {Spectrum and analysis receive samples scaled exactly once} -body {
+    setup_pipeline oscaret frequency
+    ::TDSO::frame_ready {0 26 32 63}
+    list $::preview [lindex $::analysis 1] [format %.6f [lindex $::analysis 0 1]]
+} -result {{0 104 128 252} {0 104 128 252} -0.022222}
+
+test oscar-time-1 {OSCAR retains its original 8-bit samples and coordinates} -body {
+    setup_pipeline oscar time
+    ::FSM_OSCAR::init 4
+    ::FSM_OSCAR::set_result_callback ::TDSO::frame_ready
+    ::FSM_OSCAR::collect_data [binary format cu* {165 90 195 60 0 104 128 255}]
+    list [::OscilloscopeTrigger::get_status] $::points [lindex $::analysis 1]
+} -result {triggered {0 127 1 0} {0 104 128 255}}
+
+test oscar-frequency-1 {OSCAR spectrum samples remain unchanged} -body {
+    setup_pipeline oscar frequency
+    ::TDSO::frame_ready {0 104 128 255}
+    list $::preview [lindex $::analysis 1]
+} -result {{0 104 128 255} {0 104 128 255}}
+
+test dso152-time-1 {DSO152 byte frames reach software triggering and analysis} -body {
+    setup_pipeline dso152 time
+    ::DSO152FSM::init 4
+    ::DSO152FSM::set_result_callback ::TDSO::frame_ready
+    ::DSO152FSM::collect_data [binary format cu* {165 90}]
+    ::DSO152FSM::collect_data [binary format cu* {195 60 0 104}]
+    ::DSO152FSM::collect_data [binary format cu* {128 255}]
+    list [::OscilloscopeTrigger::get_status] $::points [lindex $::analysis 1]
+} -result {triggered {0 127 1 0} {0 104 128 255}}
+
+test dso152-voltage-1 {Centered byte samples and cursor use volts at every zoom} -body {
+    setup_pipeline dso152 frequency
+    set model $::TDSO::me(signalModel)
+    set volts [lmap value [$model adc_to_voltage {117 127 137} 255 128 0 0.0017 dc 1] {format %.3f $value}]
+    list $volts \
+        [$model adc_to_screen 137 255 128 0 2 dc] \
+        [format %.3f [$model cursor_to_voltage 108 255 128 0 0.0017 2 dc 1]]
+} -result {{-0.017 0.000 0.017} 108 0.017}
+
+test dso152-long-frame-1 {4096 samples reach analysis but only 1024 are drawn} -body {
+    setup_pipeline dso152 time
+    set ::TDSO::me(SAMPLE_COUNT) 4096
+    ::OscilloscopeScreen::set_sample_count 4096
+    ::OscilloscopeTrigger::init auto 127 pos 0 0
+    set frame [concat [lrepeat 3072 100] [lrepeat 1024 110]]
+    ::TDSO::frame_ready $frame
+    set initial [list [llength [lindex $::analysis 1]] [llength $::points]]
+    set ::TDSO::me(scopeOnOff) 0
+    ::TDSO::Ui_view_position 3072
+    list $initial [llength $::points] [lrange $::points 0 3] [lindex $::points end-1] \
+        [llength [lindex $::analysis 1]]
+} -result {{4096 2048} 2048 {0 145 1 145} 1023 4096}
+
+test dso152-spectrum-pan-1 {Spectrum viewport reaches final bins without truncating analysis} -body {
+    setup_pipeline dso152 frequency
+    set ::TDSO::me(SAMPLE_COUNT) 4096
+    ::OscilloscopeScreen::set_sample_count 4096
+    ::OscilloscopeState::set_value spectrum full
+    ::OscilloscopeScreen::set_dht_data [list [concat [lrepeat 3072 0] [lrepeat 1024 1]] [lrepeat 2048 1]]
+    ::TDSO::frame_ready [lrepeat 4096 127]
+    ::TDSO::Ui_view_position 9000
+    list $::TDSO::me(viewOffset) [llength $::points] [lindex $::points end-1] [llength [lindex $::analysis 1]]
+} -result {3072 2048 1023 4096}
+
+test dso152-window-1 {Spectral windows can cover the full capture or its final quarter} -body {
+    set ::TDSO::me(spectralWindow) Hann
+    set ::TDSO::me(spectralWindowLen) 4096
+    set ::TDSO::me(spectralWndPos) 4095
+    set full [::TDSO::Ui_window_bounds]
+    set ::TDSO::me(spectralWindowLen) 1024
+    list $full [::TDSO::Ui_window_bounds] [::TDSO::Ui_window_lengths]
+} -result {{0 4095} {3072 4095} {64 128 256 512 1024 2048 4096}}
+
+test dso152-cursors-1 {Frequency cursors use transform size, offset, and magnitude bin origin} -body {
+    ::OscilloscopeScreen::set_fs 4096
+    set ::OscilloscopeScreen::m_cursor(v1Cursor.pos) 0
+    set ::OscilloscopeScreen::m_cursor(v2Cursor.pos) 100
+    set full [::OscilloscopeScreen::Cursors_get_frequency]
+    ::OscilloscopeState::set_value spectrum avg
+    ::TDSO::Ui_view_position 3072
+    list $full $::TDSO::me(viewOffset) [::OscilloscopeScreen::Cursors_get_frequency]
+} -result {{3072 3172 100} 1024 {1025 1125 100}}
+
+test dso152-dht-1 {Full 4096-point transform retains calibrated bins and frequency} -body {
+    source [file join $root DHT-1.2 DHT-1.2.tm]
+    set dht [DHT new 4096]
+    set adc {}
+    for {set i 0} {$i < 4096} {incr i} {
+        lappend adc [expr {127+50*cos(2*acos(-1)*37*$i/4096)}]
+    }
+    lassign [$dht process [list {} $adc 4096]] frequency raw magnitude calibration
+    $dht destroy
+    list $frequency [llength $raw] [llength $magnitude] \
+        [dict get $calibration acquisitionSamples] [format %.1f [lindex $magnitude 36]]
+} -result {37 4096 2048 4096 25.0}
+
+test dso112a-spectrum-1 {DSO112A framed capture reaches the real signal and analysis pipeline} -body {
+    setup_pipeline dso112a frequency
+    ::DSO112AFSM::set_measure_data_len 1024
+    ::DSO112AFSM::set_result_callback ::TDSO::frame_ready
+    set raw [binary format cu* [concat {192 8 4 50} {0 104 254 255} [lrepeat 1020 127] {0 0 0 0}]]
+    set wire "\xFE[string map [list \xFE \xFE\x00] $raw]"
+    ::DSO112AFSM::collect_data [string range $wire 0 6]
+    ::DSO112AFSM::collect_data [string range $wire 7 end]
+    list [llength [lindex $::analysis 1]] [lrange [lindex $::analysis 1] 0 3] [lrange $::preview 0 3]
+} -result {1024 {0 104 254 255} {0 104 254 255}}
+
+test dso112a-time-1 {DSO112A samples enter software triggering and time rendering} -body {
+    setup_pipeline dso112a time
+    ::DSO112AFSM::set_measure_data_len 512
+    ::DSO112AFSM::set_result_callback ::TDSO::frame_ready
+    set raw [binary format cu* [concat {192 8 2 50} {0 104} [lrepeat 510 128] {0 0 0 0}]]
+    ::DSO112AFSM::collect_data "\xFE$raw"
+    list [::OscilloscopeTrigger::get_status] [lrange $::points 0 3] [llength [lindex $::analysis 1]]
+} -result {triggered {0 127 1 127} 512}
+
+$::TDSO::me(signalModel) destroy
+cleanupTests

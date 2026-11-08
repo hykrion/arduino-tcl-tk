@@ -1,0 +1,237 @@
+# Run with tclsh tests/viewport_ui.test (requires Tk; window stays hidden).
+package require Tk
+wm withdraw .
+package require tcltest 2
+namespace import ::tcltest::*
+set root [file dirname [file dirname [file normalize [info script]]]]
+foreach module {OscilloscopeState-1.0 OscilloscopeScreen-1.1 OscilloscopeTrigger-1.0} {
+    source [file join $root $module $module.tm]
+}
+source [file join $root Dialog-1.0 Dialog-1.0.tm]
+foreach {name version} {OscThread 1.0 Spectrogram 1.2} {
+    package provide $name $version
+}
+source [file join $root TDSO-1.0 TDSO-1.0.tm]
+namespace eval OscThread {proc process_adc_data {data} {}}
+proc ::TDSO::Ui_refresh_trigger_status {} {}
+set ::TDSO::me(signalModel) [::SignalModel::create dso152]
+::OscilloscopeScreen::set_signal_model $::TDSO::me(signalModel)
+::OscilloscopeScreen::set_sample_count 4096
+set ::TDSO::me(SAMPLE_COUNT) 4096
+foreach path {.shell .shell.body .shell.body.left .shell.body.left.scope} {
+    ttk::frame $path
+}
+::TDSO::Ui_init_screen_frame .shell.body.left.scope
+set plot .shell.body.left.scope.plot
+
+test viewport-tk-1 {Real scale redraws the last 1024 samples on a fixed canvas} -body {
+    ::OscilloscopeTrigger::init auto 127 pos 0 0
+    ::OscilloscopeState::set_value visualization time
+    ::OscilloscopeState::set_value zoomT 1
+    ::TDSO::frame_ready [lrepeat 4096 100]
+    set ::TDSO::me(scopeOnOff) 0
+    $plot.viewport.position set 3072
+    update idletasks
+    set coords [$plot.canvas coords $::OscilloscopeScreen::me(line)]
+    list [$plot.canvas cget -width] $::TDSO::me(viewOffset) [llength $coords] \
+        [lindex $coords end-1] [expr {int([$plot.viewport.position cget -to])}]
+} -result {1024 3072 2048 1023.0 3072}
+
+test viewport-tk-2 {Preview window overlay maps the entire acquisition to 1024 pixels} -body {
+    ::OscilloscopeState::set_value visualization frequency
+    ::OscilloscopeState::set_value spectrum avg
+    ::OscilloscopeScreen::set_dht_data [list [lrepeat 4096 1] [lrepeat 2048 1]]
+    ::TDSO::Render_view
+    ::OscilloscopeScreen::set_window_range 3072 4095
+    list [$plot.windowbar.canvas coords $::OscilloscopeScreen::me(previewArea)] \
+        [expr {int([$plot.viewport.position cget -to])}] [llength [$plot.canvas coords $::OscilloscopeScreen::me(line)]]
+} -result {{768.0 0.0 1024.0 52.0} 1024 2048}
+
+test viewport-tk-3 {Trigger button restores automatic positioning} -body {
+    ::OscilloscopeState::set_value visualization time
+    $plot.viewport.trigger invoke
+    list $::TDSO::me(viewManual) $::TDSO::me(viewOffset)
+} -result {0 0}
+
+test viewport-tk-4 {Panning never repeats full-frame analysis preparation or preview drawing} -setup {
+    set ::preparations 0
+    set ::previews 0
+    proc count_prepare {args} {incr ::preparations}
+    proc count_preview {args} {incr ::previews}
+    trace add execution ::OscilloscopeScreen::Prepare_analysis_data enter count_prepare
+    trace add execution ::OscilloscopeScreen::Draw_window_preview enter count_preview
+} -body {
+    foreach mode {time frequency} {
+        ::OscilloscopeState::set_value visualization $mode
+        foreach offset {0 512 1024 2048 3072} {
+            $plot.viewport.position set $offset
+        }
+    }
+    list $::preparations $::previews
+} -cleanup {
+    trace remove execution ::OscilloscopeScreen::Prepare_analysis_data enter count_prepare
+    trace remove execution ::OscilloscopeScreen::Draw_window_preview enter count_preview
+    rename count_prepare {}
+    rename count_preview {}
+} -result {0 0}
+
+test viewport-tk-5 {4096-point overview is bounded to 1024 plotted points, including endpoints} -body {
+    ::OscilloscopeScreen::Draw_window_preview [concat [lrepeat 4095 0] 255]
+    set coords [$plot.windowbar.canvas coords $::OscilloscopeScreen::me(previewLine)]
+    list [llength $coords] [lrange $coords 0 1] [lrange $coords end-1 end]
+} -result {2048 {0.0 48.0} {1023.0 4.0}}
+
+test viewport-tk-6 {Full frame is prepared once and spectrum is drawn only on worker completion} -setup {
+    set ::preparations 0
+    set ::draws 0
+    proc count_prepare {args} {incr ::preparations}
+    proc count_draw {args} {incr ::draws}
+    trace add execution ::OscilloscopeScreen::Prepare_analysis_data enter count_prepare
+    trace add execution ::OscilloscopeScreen::Draw_frequency enter count_draw
+} -body {
+    set ::TDSO::me(scopeOnOff) 1
+    ::OscilloscopeState::set_value visualization frequency
+    ::TDSO::frame_ready [lrepeat 4096 100]
+    set before $::draws
+    ::TDSO::Update_frequency_data [list 100 [lrepeat 4096 1] [lrepeat 2048 1]]
+    list $::preparations $before $::draws [llength [lindex $::TDSO::me(lastFrame) 1]]
+} -cleanup {
+    trace remove execution ::OscilloscopeScreen::Prepare_analysis_data enter count_prepare
+    trace remove execution ::OscilloscopeScreen::Draw_frequency enter count_draw
+    rename count_prepare {}
+    rename count_draw {}
+} -result {1 0 1 4096}
+
+test sigrok-tk-1 {Panel displays multiline results and closing disables live decoding} -body {
+    ::TDSO::Ui_sigrok_open
+    wm withdraw .sigrok
+    ::TDSO::Ui_sigrok_result ok "UART: 55\nUART: AA"
+    set output [.sigrok.result.text get 1.0 end-1c]
+    set ::TDSO::me(sigrokLive) 1
+    ::TDSO::Ui_sigrok_close
+    list $output $::TDSO::me(sigrokLive) [winfo exists .sigrok]
+} -result {{UART: 55
+UART: AA} 0 0}
+
+test sigrok-tk-2 {Invalid configuration is shown in the panel and disables live decoding} -body {
+    ::TDSO::Ui_sigrok_open
+    wm withdraw .sigrok
+    set ::TDSO::me(sigrokLive) 1
+    set ::TDSO::me(sigrok.baudrate) 0
+    ::TDSO::Ui_sigrok_decode
+    list $::TDSO::me(sigrokLive) [expr {$::TDSO::me(sigrokStatus) eq "Sigrok: [::TDSO::tr sigrok_error_baudrate]"}]
+} -cleanup {
+    ::TDSO::Ui_sigrok_close
+} -result {0 1}
+
+test sigrok-tk-3 {Switching presets clears stale filters and Custom preserves specifications} -body {
+    ::TDSO::Ui_sigrok_open
+    wm withdraw .sigrok
+    set ::TDSO::me(sigrok.annotations) uart=rx-data
+    set ::TDSO::me(sigrokProtocol) AM230x
+    ::TDSO::Ui_sigrok_protocol
+    set sensor [list $::TDSO::me(sigrok.decoders) $::TDSO::me(sigrok.annotations) \
+        [.sigrok.options.ebaudrate cget -state]]
+    set ::TDSO::me(sigrokProtocol) Custom
+    ::TDSO::Ui_sigrok_protocol
+    set custom [list $::TDSO::me(sigrok.decoders) [.sigrok.options.edecoders cget -state]]
+    set ::TDSO::me(sigrokProtocol) UART
+    ::TDSO::Ui_sigrok_protocol
+    list $sensor $custom $::TDSO::me(sigrok.decoders) [.sigrok.options.ebaudrate cget -state]
+} -cleanup {
+    ::TDSO::Ui_sigrok_close
+} -result {{am230x:sda=RX:device=am230x {} disabled} {am230x:sda=RX:device=am230x normal} {} normal}
+
+test sigrok-tk-4 {Saved sensor settings are recognized without clearing filters} -setup {
+    set saved $::TDSO::Sigrok::config
+    ::TDSO::Sigrok::configure {decoders {am230x:sda=RX:device=dht11} annotations am230x=humidity}
+} -body {
+    ::TDSO::Ui_sigrok_open
+    wm withdraw .sigrok
+    list $::TDSO::me(sigrokProtocol) $::TDSO::me(sigrok.annotations)
+} -cleanup {
+    ::TDSO::Ui_sigrok_close
+    ::TDSO::Sigrok::configure $saved
+} -result {DHT11 am230x=humidity}
+
+test sigrok-tk-5 {An open dialog follows every palette, including disabled entries and its existing popdown} -setup {
+    set savedSkin $::TDSO::me(skin)
+    ::TDSO::Ui_init_style
+    ::TDSO::Ui_sigrok_open
+    wm withdraw .sigrok
+    ttk::combobox::PopdownWindow .sigrok.options.protocol
+} -body {
+    set matches {}
+    foreach skin [::TDSO::Ui_skin_names] {
+        set ::TDSO::me(skin) $skin
+        ::TDSO::Ui_apply_skin
+        set p [::TDSO::Ui_skin_palette $skin]
+        lappend matches [expr {
+            [.sigrok cget -background] eq [dict get $p panelBg] &&
+            [.sigrok.result.text cget -background] eq [dict get $p listBg] &&
+            [.sigrok.result.text cget -foreground] eq [dict get $p listFg] &&
+            [ttk::style lookup Sigrok.TEntry -fieldbackground disabled] eq [dict get $p panelBg] &&
+            [ttk::style lookup Sigrok.TCheckbutton -background active] eq [dict get $p panelBg] &&
+            [.sigrok.options.protocol.popdown.f.l cget -background] eq [dict get $p listBg]
+        }]
+    }
+    set matches
+} -cleanup {
+    ::TDSO::Ui_sigrok_close
+    set ::TDSO::me(skin) $savedSkin
+    ::TDSO::Ui_apply_skin
+} -result {1 1 1 1 1}
+
+test sigrok-tk-6 {Live language switching preserves custom settings and decoder output} -setup {
+    set savedLanguage $::TDSO::me(language)
+    ::TDSO::Ui_sigrok_open
+    wm withdraw .sigrok
+    set ::TDSO::me(sigrokProtocol) Custom
+    set ::TDSO::me(sigrok.decoders) {example:data=RX}
+    ::TDSO::Ui_sigrok_protocol
+    ::TDSO::Ui_sigrok_result ok {UART: 55}
+} -body {
+    set results {}
+    foreach locale {es en fr de it pt ja zh_cn ca eu gl} {
+        set ::TDSO::me(language) $locale
+        ::TDSO::Ui_refresh_language
+        set display [.sigrok.options.protocol get]
+        event generate .sigrok.options.protocol <<ComboboxSelected>>
+        lappend results [expr {
+            [wm title .sigrok] eq [::TDSO::tr sigrok_title] &&
+            [.sigrok.decode cget -text] eq [::TDSO::tr sigrok_decode] &&
+            $display eq [::TDSO::tr sigrok_custom] &&
+            $::TDSO::me(sigrokProtocol) eq "Custom" &&
+            $::TDSO::me(sigrok.decoders) eq "example:data=RX" &&
+            $::TDSO::me(sigrokStatus) eq [::TDSO::tr sigrok_complete] &&
+            [.sigrok.result.text get 1.0 end-1c] eq "UART: 55"
+        }]
+    }
+    set results
+} -cleanup {
+    ::TDSO::Ui_sigrok_close
+    set ::TDSO::me(language) $savedLanguage
+    ::TDSO::Ui_refresh_language
+} -result {1 1 1 1 1 1 1 1 1 1 1}
+
+test sigrok-tk-7 {Application errors translate on language changes while external diagnostics stay intact} -setup {
+    set savedLanguage $::TDSO::me(language)
+    ::TDSO::Ui_sigrok_open
+    wm withdraw .sigrok
+} -body {
+    ::TDSO::Ui_sigrok_result error {Baud rate must be a positive integer}
+    set ::TDSO::me(language) es
+    ::TDSO::Ui_refresh_language
+    set translated [.sigrok.result.text get 1.0 end-1c]
+    ::TDSO::Ui_sigrok_result error {decoder-specific diagnostic: 100%}
+    list $translated [.sigrok.result.text get 1.0 end-1c] \
+        [::TDSO::Ui_sigrok_error_text {sigrok-cli not found: C:/test dir/sigrok.exe}]
+} -cleanup {
+    ::TDSO::Ui_sigrok_close
+    set ::TDSO::me(language) $savedLanguage
+    ::TDSO::Ui_refresh_language
+} -result {{La velocidad en baudios debe ser un entero positivo} {decoder-specific diagnostic: 100%} {No se encuentra sigrok-cli: C:/test dir/sigrok.exe}}
+
+$::TDSO::me(signalModel) destroy
+destroy .
+cleanupTests

@@ -1,0 +1,244 @@
+# Headless serial-protocol and Factory integration tests.
+package require tcltest 2
+namespace import ::tcltest::*
+set root [file dirname [file dirname [file normalize [info script]]]]
+set ::incoming {}
+
+# ---------------------------------------------
+proc add_module_path {path} {
+    ::tcl::tm::path add [file join $::root $path]
+    return
+}
+# ---------------------------------------------
+proc packet {id type payload} {
+    set size [expr {4 + [llength $payload]}]
+    set raw [binary format cu* [concat [list $id [expr {$size & 255}] [expr {$size >> 8}] $type] $payload]]
+    set result "\xFE[string map [list \xFE \xFE\x00] $raw]"
+    return $result
+}
+
+package provide SerialPort 1.0
+rename ::fconfigure ::serial_test_fconfigure
+proc ::fconfigure {channel args} {
+    if {$channel eq "dso112a-test-serial"} {
+        set ::serialBufferOptions $args
+        set result {}
+    } else {
+        set result [::serial_test_fconfigure $channel {*}$args]
+    }
+    return $result
+}
+namespace eval ::SerialPort {
+    variable self
+    set self(port) dso112a-test-serial
+    variable sent {}
+    variable readable {}
+    variable respond 1
+    variable fail 0
+    variable eof 0
+    variable params [lrepeat 30 0]
+    lset params 4 254
+    # ---------------------------------------------
+    proc destroy {} {set ::connection {}; return}
+    # ---------------------------------------------
+    proc init {port speed} {set ::connection [list $port $speed]; return}
+    # ---------------------------------------------
+    proc receive {} {
+        variable fail
+        variable eof
+        if {$fail} {
+            return -code error "error reading fileX: I/O error"
+        }
+        set data $::incoming
+        set ::incoming {}
+        if {$eof} {
+            destroy
+        }
+        return $data
+    }
+    # ---------------------------------------------
+    proc send {cmd} {
+        variable sent
+        variable respond
+        variable params
+        lappend sent [binary encode hex $cmd]
+        if {$cmd eq "\xFE\xC0\x04\x00\x21" && $respond} {
+            after 0 [list ::DSO112AFSM::collect_data [packet 192 49 $params]]
+        }
+        return
+    }
+    # ---------------------------------------------
+    proc set_readable {callback} {
+        if {$::connection eq {}} {
+            return -code error "can not find channel named \"fileX\""
+        }
+        set ::SerialPort::readable $callback
+        return
+    }
+}
+source [file join $root DriverDevice.tcl]
+source [file join $root DriverFactoryModules.tcl]
+source [file join $root TDSO-1.0 TDSO-SignalModel.tcl]
+
+test discovery-1 {Capabilities load without opening serial or requiring Tk} -body {
+    set caps [::DriverFactory::get_capabilities DSO112A]
+    list [expr {"dso112a" in [::DriverFactory::available]}] [dict get $caps acquisitionSamples] [info exists ::connection] [package provide Tk]
+} -result {1 1024 0 {}}
+
+test factory-1 {Original init signature is preserved and parameters received} -body {
+    set ::device [::DriverFactory::create DSO112A fake 115200 1024]
+    list $::connection [info args ::DSO112ADriver::init] [dict get $::DSO112ADriver::cachedParameters 21] [dict get $::DSO112ADriver::cachedParameters 4]
+} -result {{fake 115200} {portName portSpeed} 4 254}
+
+testConstraint windows [expr {$::tcl_platform(platform) eq "windows"}]
+test serial-buffer-1 {DSO112A enlarges only the Windows receive buffer} -constraints windows -body {
+    set ::serialBufferOptions
+} -result {-sysbuffer {65536 4096}}
+
+test controls-1 {Every advertised setting is accepted without nested parameter waits} -body {
+    set ::SerialPort::sent {}
+    foreach val [dict get $caps timeBases] {$::device set_base_time $val; $::device get_fs $val}
+    foreach val [dict get $caps vDivs] {$::device set_v_div $val}
+    foreach val [dict get $caps couplings] {$::device set_coupling $val}
+    list [llength $::SerialPort::sent] [expr {"fec0040021" ni $::SerialPort::sent}] [lmap base {1us 2us 5us 20ms} {$::device get_fs $base}] [dict get $caps voltageCalibration 0.5] [catch {$::device set_base_time 50ms}] [catch {::DSO112ADriver::set_time_base 50ms}]
+} -result {30 1 {25000000.0 12500000.0 5000000.0 1250.0} 0.02 1 1}
+
+test framing-1 {Fragmentation, escaped samples and reserved bytes} -body {
+    set ::frames {}
+    $::device set_result_callback {lappend ::frames}
+    set samples [concat {0 127 254 255} [lrepeat 1020 128]]
+    set wire [packet 192 50 [concat $samples {254 0 254 0}]]
+    foreach byte [split $wire {}] {::DSO112AFSM::collect_data $byte}
+    list [llength $::frames] [expr {[lindex $::frames 0] eq $samples}]
+} -result {1 1}
+
+test framing-2 {Measurement, identity and malformed packets cannot pollute captures} -body {
+    set ::frames {}
+    ::DSO112AFSM::collect_data "\xFE\xC0\xFF\xFF"
+    ::DSO112AFSM::collect_data [packet 226 79 [lrepeat 10 254]]
+    ::DSO112AFSM::collect_data [packet 192 52 [lrepeat 26 254]]
+    ::DSO112AFSM::collect_data [packet 192 50 [concat [lrepeat 1024 9] {0 0 0 0}]]
+    list [llength $::frames] [lsort -unique [lindex $::frames 0]]
+} -result {1 9}
+
+test singles-1 {Slow single-sample frames accumulate into one capture} -body {
+    ::DSO112AFSM::clear_adc
+    set ::frames {}
+    set wire [packet 192 51 {254 0 0 0}]
+    ::DSO112AFSM::collect_data [string repeat $wire 1024]
+    list [llength $::frames] [llength [lindex $::frames 0]] [lsort -unique [lindex $::frames 0]]
+} -result {1 1024 254}
+
+test lifecycle-1 {Stop cancels firmware workaround and on configures continuous capture} -body {
+    $::device set_usb_scope_mode on
+    $::device set_v_div 0.5
+    set timer $::DSO112ADriver::restartTimer
+    $::device set_usb_scope_mode off
+    set pending [catch {after info $timer}]
+    $::device set_usb_scope_mode on
+    list $pending $::DSO112ADriver::restartTimer [dict get $::DSO112ADriver::cachedParameters 12] [lindex $::SerialPort::sent end]
+} -result {1 {} 0 fee10400c0}
+
+test reader-startup-1 {Parameter fragments are collected without native serial fileevents} -setup {
+    $::device set_usb_scope_mode off
+    ::DSO112ADriver::set_readable [namespace eval ::DSO112ADriver {namespace code Read_serial}]
+} -body {
+    set response [packet 192 49 $::SerialPort::params]
+    set ::DSO112AFSM::parametersRead pending
+    foreach fragment [list [string range $response 0 9] [string range $response 10 end]] {
+        set ::incoming $fragment
+        ::DSO112ADriver::Read_serial
+    }
+    list $::DSO112AFSM::parametersRead \
+        [dict size $::DSO112AFSM::parameters] \
+        [expr {$::SerialPort::readable eq {}}] \
+        [lindex [after info $::DSO112ADriver::readTimer] 1]
+} -cleanup {
+    $::device set_usb_scope_mode on
+} -result {done 30 1 timer}
+
+test encoding-1 {Parameter bytes are escaped and sent in index order} -body {
+    set params {}
+    for {set i 29} {$i >= 0} {incr i -1} {dict set params $i $i}
+    dict set params 5 254
+    ::DSO112ADriver::Send_cmd_changed_parameters $params
+    set encoded [lindex $::SerialPort::sent end]
+    string match fec02200220001020304fe000607* $encoded
+} -result 1
+
+test timeout-1 {Timeout never returns an old parameter snapshot} -body {
+    set ::SerialPort::respond 0
+    after 0 {::DSO112AFSM::Process_async_data pending}
+    catch {::DSO112ADriver::request_parameters} message
+    set message
+} -result {DSO112A: timeout waiting for parameters}
+
+test model-1 {Voltage and cursor calibration use centered ADC8} -body {
+    set model [::SignalModel::create dso112a]
+    set result [list [$model normalize_frame {0 127 254}] [$model adc_to_voltage {102 127 152} 255 127 0 0.02 dc 1] [$model cursor_to_voltage 78 255 127 0 0.02 2 dc 1]]
+    $model destroy
+    set result
+} -result {{0 127 254} {-0.5 0.0 0.5} 0.5}
+
+test destroy-1 {Destroy cancels delayed reconnect and detaches receiver} -body {
+    $::device set_v_div 1
+    set timer $::DSO112ADriver::restartTimer
+    $::device destroy
+    list [catch {after info $timer}] $::connection $::SerialPort::readable $::DSO112AFSM::m_resultCallback [lindex $::SerialPort::sent end]
+} -result {1 {} {} {} fee9040000}
+
+test destroy-auto-1 {Disconnect restores Auto without querying parameters or changing position} -body {
+    set ::SerialPort::respond 1
+    set dev [::DriverFactory::create dso112a fake 115200 1024]
+    $dev set_trigger_mode normal
+    $dev set_trigger_position 1/8
+    set ::SerialPort::sent {}
+    $dev destroy
+    list [llength $::SerialPort::sent] \
+        [dict get $::DSO112ADriver::cachedParameters $::DSO112ADriver::PARAMETERS(TRIG_MODE)] \
+        [dict get $::DSO112ADriver::cachedParameters $::DSO112ADriver::PARAMETERS(TRIG_POS)] \
+        [expr {"fec0040021" ni $::SerialPort::sent}] [lindex $::SerialPort::sent end]
+} -cleanup {
+    set ::SerialPort::respond 0
+} -result {2 0 0 1 fee9040000}
+
+test failure-1 {Connection failure closes port without retaining callbacks} -body {
+    after 0 {::DSO112AFSM::Process_async_data pending}
+    catch {::DriverFactory::create dso112a fake 115200 1024} message
+    list $message $::connection $::SerialPort::readable
+} -result {{DSO112A: timeout waiting for parameters} {} {}}
+
+test disconnect-1 {A serial read failure stops the reader without raising} -body {
+    set ::SerialPort::respond 1
+    set ::SerialPort::fail 0
+    set ::dev [::DriverFactory::create dso112a fake 115200 1024]
+    $::dev set_usb_scope_mode on
+    set ::SerialPort::fail 1
+    set code [catch {::DSO112ADriver::Read_serial} message]
+    set ::SerialPort::fail 0
+    set result [list $code $message $::DSO112ADriver::receiverActive $::connection $::SerialPort::readable]
+    $::dev destroy
+    set result
+} -result {0 {} 0 {} {}}
+
+test disconnect-2 {EOF after a burst closes the port and the deferred rearm is ignored} -body {
+    set ::SerialPort::respond 1
+    set ::SerialPort::eof 0
+    set ::dev [::DriverFactory::create dso112a fake 115200 1024]
+    $::dev set_usb_scope_mode on
+    set ::incoming [binary format cu* {254 192 8 4 50 0 0 0 0}]
+    set ::SerialPort::eof 1
+    ::DSO112ADriver::Read_serial
+    set timer $::DSO112ADriver::readTimer
+    after cancel $timer
+    set ::DSO112ADriver::readTimer {}
+    set code [catch {::DSO112ADriver::Resume_readable} message]
+    set ::SerialPort::eof 0
+    set result [list $code $message $::DSO112ADriver::receiverActive $::connection]
+    $::dev destroy
+    set result
+} -result {0 {} 0 {}}
+
+rename ::fconfigure {}
+rename ::serial_test_fconfigure ::fconfigure
+cleanupTests

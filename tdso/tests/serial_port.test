@@ -1,0 +1,104 @@
+# Exercise the common SerialPort module with real file channels and injected
+# Windows serial options/errors. No hardware is opened.
+package require tcltest 2
+namespace import ::tcltest::*
+set root [file dirname [file dirname [file normalize [info script]]]]
+set module [file normalize [file join $root ../base/SerialPort-1.0.tm]]
+if {[info exists ::env(SERIAL_PORT_TEST_MODULE)]} {
+    set module $::env(SERIAL_PORT_TEST_MODULE)
+}
+source $module
+set fixture [makeFile abc serial-port-fixture.bin]
+set platform $::tcl_platform(platform)
+set ::tcl_platform(platform) windows
+set ::serialOptions {}
+set ::failConfigure 0
+set ::failRead 0
+set ::detailQueried 0
+rename ::fconfigure ::original_fconfigure
+rename ::read ::original_read
+
+# ---------------------------------------------
+proc ::fconfigure {channel args} {
+    set result {}
+    switch -- [lindex $args 0] {
+        -sysbuffer {lappend ::serialOptions $args}
+        -mode {
+            if {$::failConfigure} {error "simulated configuration error"}
+            set result [::original_fconfigure $channel {*}[lrange $args 2 end]]
+        }
+        -lasterror {
+            set ::detailQueried [expr {$channel in [chan names]}]
+            set result RXOVER
+        }
+        default {set result [::original_fconfigure $channel {*}$args]}
+    }
+    return $result
+}
+
+# ---------------------------------------------
+proc ::read {channel args} {
+    if {$::failRead && [info exists ::SerialPort::self(port)] &&
+        $channel eq $::SerialPort::self(port)} {
+        error "simulated I/O error" {} {POSIX EIO {I/O error}}
+    }
+    set result [::original_read $channel {*}$args]
+    return $result
+}
+
+test serial-init-1 {Windows buffer increased before serial configuration} -body {
+    ::SerialPort::init $fixture 115200
+    list $::serialOptions $::SerialPort::self(speed) \
+        [expr {$::SerialPort::self(portName) eq $fixture}]
+} -result {{{-sysbuffer {65536 4096}}} 115200 1}
+
+test serial-reopen-1 {Reopening does not leak the previous channel} -body {
+    set count [llength [chan names]]
+    ::SerialPort::init $fixture 115200
+    expr {[llength [chan names]] == $count}
+} -result 1
+
+test serial-read-1 {Read failure preserves error code and diagnoses before closing} -body {
+    set port $::SerialPort::self(port)
+    set ::failRead 1
+    set status [catch {::SerialPort::receive} message options]
+    list $status [dict get $options -errorcode] \
+        [string match {*lasterror=RXOVER*} $message] $::detailQueried \
+        [expr {$port in [chan names]}] [info exists ::SerialPort::self(port)]
+} -cleanup {
+    set ::failRead 0
+} -result {1 {POSIX EIO {I/O error}} 1 1 0 0}
+
+test serial-close-1 {Repeated cleanup after failure is harmless} -body {
+    ::SerialPort::destroy
+    ::SerialPort::unset_readable
+    ::SerialPort::destroy
+} -result {}
+
+test serial-configure-1 {Configuration failure releases the newly opened channel} -body {
+    set before [lsort [chan names]]
+    set ::failConfigure 1
+    set status [catch {::SerialPort::init $fixture 115200} message]
+    list $status $message [expr {[lsort [chan names]] eq $before}] \
+        [info exists ::SerialPort::self(port)]
+} -cleanup {
+    set ::failConfigure 0
+} -result {1 {simulated configuration error} 1 0}
+
+test serial-eof-1 {Normal data is returned and EOF closes the channel} -body {
+    ::SerialPort::init $fixture 115200
+    # File EOF is deterministic in blocking mode; the injected serial errors
+    # above exercise the production nonblocking configuration.
+    ::original_fconfigure $::SerialPort::self(port) -blocking 1
+    set value [::SerialPort::receive]
+    list [string trim $value] [info exists ::SerialPort::self(port)]
+} -result {abc 0}
+
+rename ::read {}
+rename ::original_read ::read
+rename ::fconfigure {}
+rename ::original_fconfigure ::fconfigure
+set ::tcl_platform(platform) $platform
+::SerialPort::destroy
+removeFile serial-port-fixture.bin
+cleanupTests

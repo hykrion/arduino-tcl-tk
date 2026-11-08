@@ -1,0 +1,72 @@
+package require tcltest 2
+namespace import ::tcltest::*
+set root [file dirname [file dirname [file normalize [info script]]]]
+source [file join $root FSM_OSCARET-1.0 FSM_OSCARET-1.0.tm]
+source [file join $root TDSO-1.0 TDSO-SignalModel.tcl]
+set model [::SignalModel::create oscaret]
+proc receive_frame {frame} {
+    # Exercise the same strict ADC6 validation as the application.
+    $::model normalize_frame $frame
+    lappend ::frames $frame
+}
+::FSM_OSCARET::set_result_callback receive_frame
+
+test framing-truncated-1 {Next header replaces a truncated payload, even across serial reads} -setup {
+    ::FSM_OSCARET::init 4
+    set ::frames {}
+} -body {
+    foreach chunk {{165 90 195 60 1 2} {165} {90 195} {60 3 4 5 6}} {
+        ::FSM_OSCARET::collect_data [binary format cu* $chunk]
+    }
+    set ::frames
+} -result {{3 4 5 6}}
+
+test framing-header-1 {Header bytes must be consecutive; overlapping prefixes recover} -setup {
+    ::FSM_OSCARET::init 4
+    set ::frames {}
+} -body {
+    ::FSM_OSCARET::collect_data [binary format cu* {
+        165 0 90 195 60 1 2 3 4
+        165 90 165 90 195 165 90 195 60 7 8 9 10
+    }]
+    set ::frames
+} -result {{7 8 9 10}}
+
+test framing-invalid-1 {Invalid ADC bytes discard a partial frame without masking them} -setup {
+    ::FSM_OSCARET::init 4
+    set ::frames {}
+} -body {
+    foreach bad {64 90 195 255} {
+        ::FSM_OSCARET::collect_data [binary format cu* [list 165 90 195 60 1 $bad 2 3]]
+        ::FSM_OSCARET::collect_data [binary format cu* {165 90 195 60 0 60 62 63}]
+    }
+    set ::frames
+} -result {{0 60 62 63} {0 60 62 63} {0 60 62 63} {0 60 62 63}}
+
+test framing-init-1 {Reinitializing acquisition discards old payload and partial header} -body {
+    set ::frames {}
+    foreach partial {{165 90 195 60 1 2} {165 90}} {
+        ::FSM_OSCARET::init 4
+        ::FSM_OSCARET::collect_data [binary format cu* $partial]
+        ::FSM_OSCARET::init 4
+        ::FSM_OSCARET::collect_data [binary format cu* {165 90 195 60 4 5 6 7}]
+    }
+    set ::frames
+} -result {{4 5 6 7} {4 5 6 7}}
+
+test framing-full-1 {1024 samples and back-to-back frames survive every header split} -body {
+    set payload [lrepeat 1024 63]
+    set stream [binary format cu* [concat {165 90 195 60} $payload {165 90 195 60} $payload]]
+    set result {}
+    foreach split {1 2 3 4 1027 1028 1029 1030 1031 1032} {
+        ::FSM_OSCARET::init 1024
+        set ::frames {}
+        ::FSM_OSCARET::collect_data [string range $stream 0 [expr {$split - 1}]]
+        ::FSM_OSCARET::collect_data [string range $stream $split end]
+        lappend result [expr {$::frames eq [list $payload $payload]}]
+    }
+    set result
+} -result {1 1 1 1 1 1 1 1 1 1}
+
+$model destroy
+cleanupTests

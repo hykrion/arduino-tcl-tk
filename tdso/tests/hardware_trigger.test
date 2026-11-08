@@ -1,0 +1,173 @@
+# Headless integration of the real DSO152 driver, controller and trigger.
+package require tcltest 2
+namespace import ::tcltest::*
+set root [file dirname [file dirname [file normalize [info script]]]]
+package provide SerialPort 1.0
+namespace eval SerialPort {
+    variable sent {}
+    variable readable {}
+    proc init {args} {}
+    proc destroy {} {}
+    proc send {value} {lappend ::SerialPort::sent $value}
+    proc set_readable {value} {set ::SerialPort::readable $value}
+}
+foreach module {DSO152FSM-1.0 DSO152Driver-1.0 OscilloscopeState-1.0 OscilloscopeScreen-1.1 OscilloscopeTrigger-1.0} {
+    source [file join $root $module $module.tm]
+}
+foreach {name version} {Tk 8.6 Dialog 1.0 OscThread 1.0 Spectrogram 1.2} {
+    package provide $name $version
+}
+source [file join $root DriverDevice.tcl]
+source [file join $root tests dso152_test_helpers.tcl]
+source [file join $root TDSO-1.0 TDSO-1.0.tm]
+proc ::TDSO::Ui_refresh_run {} {}
+proc ::TDSO::Ui_focus_scope {} {}
+proc ::TDSO::Ui_display_sync {} {}
+proc ::OscilloscopeScreen::Draw_trace {points} {}
+proc ::OscilloscopeScreen::Draw_window_preview {adc} {}
+namespace eval OscThread {
+    proc process_adc_data {data} {incr ::analyses}
+}
+set ::TDSO::device [::Driver::DSO152 new fake 115200 4096]
+::TDSO::Apply_device_capabilities
+set ::TDSO::me(signalModel) [::SignalModel::create dso152]
+::OscilloscopeScreen::set_signal_model $::TDSO::me(signalModel)
+::OscilloscopeScreen::set_sample_count 4096
+set ::TDSO::me(SAMPLE_COUNT) 4096
+set ::TDSO::me(scopeOnOff) 1
+set ::analyses 0
+::OscilloscopeState::set_value visualization time
+::OscilloscopeState::set_value zoomT 1
+::OscilloscopeState::set_value triggerMode normal
+::OscilloscopeState::set_value triggerLevel 130
+::OscilloscopeState::set_value triggerSlope neg
+::OscilloscopeState::set_value triggerPosition 50
+::OscilloscopeTrigger::init normal 130 neg 50
+
+test hardware-ui-init-1 {Building UI does not configure hardware before acquisition starts} -body {
+    set ::SerialPort::sent {}
+    ::TDSO::Configure_hardware_trigger
+    ::TDSO::Ui_trigger 130
+    ::TDSO::Set_trigger_slope
+    ::TDSO::Set_trigger_position
+    list $::SerialPort::sent $::DSO152Driver::commandQueue
+} -result {{} {}}
+
+test hardware-start-1 {Start preserves selected hardware trigger settings} -body {
+    set ::SerialPort::sent {}
+    ::TDSO::Scope_on_off
+    drain_dso152_commands
+    list $::TDSO::me(hardwareTrigger) $::SerialPort::sent [::OscilloscopeTrigger::get_status]
+} -result {1 {l130 s0 b2048 t1} wait}
+
+test hardware-normal-1 {Flat captures bypass edge search and software holdoff} -body {
+    ::TDSO::frame_ready [lrepeat 4096 100]
+    ::TDSO::frame_ready [lrepeat 4096 100]
+    list $::analyses $::TDSO::me(triggerFirst) [::OscilloscopeTrigger::get_status]
+} -result {2 1536 triggered}
+
+test hardware-single-1 {Single accepts one capture and rearm sends r1} -body {
+    set ::SerialPort::sent {}
+    ::TDSO::Set_trigger_mode single
+    drain_dso152_commands
+    ::TDSO::frame_ready [lrepeat 4096 100]
+    ::TDSO::frame_ready [lrepeat 4096 110]
+    set held [list $::analyses [::OscilloscopeTrigger::get_status]]
+    ::TDSO::Set_trigger_rearm
+    drain_dso152_commands
+    ::TDSO::frame_ready [lrepeat 4096 120]
+    list $held $::analyses $::SerialPort::sent
+} -result {{3 hold} 4 {l130 s0 b2048 t3 r1 r1}}
+
+test hardware-spectrum-1 {Spectrum free-runs; returning to time restores and rearms Single} -body {
+    set ::SerialPort::sent {}
+    ::OscilloscopeState::set_value visualization frequency
+    ::TDSO::Configure_hardware_trigger
+    drain_dso152_commands
+    ::TDSO::frame_ready [lrepeat 4096 100]
+    ::TDSO::frame_ready [lrepeat 4096 110]
+    ::OscilloscopeState::set_value visualization time
+    ::TDSO::Configure_hardware_trigger
+    drain_dso152_commands
+    list $::analyses $::SerialPort::sent [::OscilloscopeTrigger::get_status]
+} -result {6 {l130 s0 b2048 t0 l130 s0 b2048 t3 r1} wait}
+
+test hardware-controls-1 {UI controls send raw levels, slopes and bounded pretrigger counts} -body {
+    set ::SerialPort::sent {}
+    ::TDSO::Ui_trigger 200.4
+    ::OscilloscopeState::set_value triggerSlope pos
+    ::TDSO::Set_trigger_slope
+    foreach position {0 100 50} {
+        ::OscilloscopeState::set_value triggerPosition $position
+        ::TDSO::Ui_select_trigger_position
+    }
+    $::TDSO::device set_trigger_hysteresis 8
+    drain_dso152_commands
+    set ::SerialPort::sent
+} -result {l200 s1 b0 b4095 b2048 h8}
+
+test hardware-resume-1 {Stop gates captures; resume reconfigures and rearms Single} -body {
+    set ::SerialPort::sent {}
+    ::TDSO::Ui_toggle_run
+    ::TDSO::frame_ready [lrepeat 4096 100]
+    set stopped [list $::analyses $::SerialPort::readable]
+    ::TDSO::Ui_toggle_run
+    drain_dso152_commands
+    ::TDSO::frame_ready [lrepeat 4096 100]
+    list $stopped $::analyses $::SerialPort::sent
+} -result {{6 {}} 7 {l200 s1 b2048 t3 r1}}
+
+test hardware-invalid-1 {Invalid trigger settings never reach serial transport} -body {
+    set ::SerialPort::sent {}
+    set errors {}
+    foreach {method value} {set_trigger -1 set_trigger 256 set_trigger_mode invalid set_trigger_slope invalid set_trigger_hysteresis 256 set_trigger_pre_samples 4096} {
+        lappend errors [catch {$::TDSO::device $method $value}]
+    }
+    list $errors $::SerialPort::sent
+} -result {{1 1 1 1 1 1} {}}
+
+test hardware-held-zoom-1 {Zoom keeps the held hardware trigger at its viewport position without reanalysis} -body {
+    ::OscilloscopeState::set_value zoomT 2
+    ::TDSO::Render_view
+    set zoomed $::TDSO::me(viewOffset)
+    ::TDSO::Ui_view_position 3000
+    ::TDSO::Ui_view_trigger
+    list $zoomed $::TDSO::me(viewOffset) $::analyses [::OscilloscopeTrigger::get_status]
+} -result {1792 1792 7 hold}
+
+test hardware-transport-1 {Configuration survives firmware's single pending command during frame transmission} -setup {
+    drain_dso152_commands
+    rename ::SerialPort::send ::SerialPort::save_send
+    set ::firmwarePending {}
+    set ::firmwareCommands {}
+    set ::firmwareDropped 0
+    proc ::SerialPort::send {command} {
+        if {$::firmwarePending ne ""} {incr ::firmwareDropped; return}
+        set ::firmwarePending $command
+        after 360 {
+            lappend ::firmwareCommands $::firmwarePending
+            set ::firmwarePending {}
+        }
+    }
+} -body {
+    ::OscilloscopeState::set_value triggerMode auto
+    ::TDSO::Configure_hardware_trigger
+    after 2100 {set ::transportDone 1}
+    vwait ::transportDone
+    list $::firmwareCommands $::firmwareDropped
+} -cleanup {
+    ::DSO152Driver::Clear_command_queue
+    rename ::SerialPort::send {}
+    rename ::SerialPort::save_send ::SerialPort::send
+} -result {{l200 s1 b2048 t2} 0}
+
+test hardware-close-1 {Destroy cancels pending commands before closing the port} -body {
+    $::TDSO::device set_trigger 100
+    $::TDSO::device set_trigger_mode auto
+    set timer $::DSO152Driver::commandTimer
+    $::TDSO::device destroy
+    list $::DSO152Driver::commandQueue $::DSO152Driver::commandTimer [catch {after info $timer}]
+} -result {{} {} 1}
+
+$::TDSO::me(signalModel) destroy
+cleanupTests

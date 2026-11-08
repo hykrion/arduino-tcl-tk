@@ -1,0 +1,181 @@
+# Run: tclsh tests/sigrok.test. Set SIGROK_CLI for the real decoder test.
+package require tcltest 2
+namespace import ::tcltest::*
+set root [file dirname [file dirname [file normalize [info script]]]]
+source [file join $root TDSO-1.0 TDSO-Sigrok.tcl]
+
+test sigrok-logic-1 {Threshold and inversion operate on normalized ADC samples} -body {
+    list [::TDSO::Sigrok::logic_samples {0 127 128 255} 127.5 0] \
+         [::TDSO::Sigrok::logic_samples {0 127 128 255} 127.5 1]
+} -result {{0 0 1 1} {1 1 0 0}}
+
+test sigrok-validation-1 {Invalid settings leave the previous configuration intact} -body {
+    set before $::TDSO::Sigrok::config
+    set result {}
+    foreach options {{threshold -1} {threshold NaN} {baudrate 0} {format bogus} {invert 2} {unknown 1}} {
+        lappend result [catch {::TDSO::Sigrok::configure $options}]
+    }
+    list $result [expr {$before eq $::TDSO::Sigrok::config}]
+} -result {{1 1 1 1 1 1} 1}
+
+test sigrok-command-1 {Capture rate, RX mapping and paths with spaces remain separate arguments} -body {
+    ::TDSO::Sigrok::configure [dict create executable [info nameofexecutable]]
+    lrange [::TDSO::Sigrok::command {capture with spaces.csv} 1000000.0] 1 end
+} -result {-i {capture with spaces.csv} -I csv:header=yes:samplerate=1000000 -P uart:rx=RX:baudrate=9600:format=ascii -A uart=rx-data}
+
+test sigrok-validation-2 {Custom fields cannot become Tcl pipeline redirections} -body {
+    list [catch {::TDSO::Sigrok::configure {decoders {>output.txt}}}] \
+         [catch {::TDSO::Sigrok::configure {annotations |}}]
+} -result {1 1}
+
+test sigrok-command-am230x {Sensor ignores unused UART options} -setup {
+    set saved $::TDSO::Sigrok::config
+} -body {
+    ::TDSO::Sigrok::configure {decoders {am230x:sda=RX:device=am230x} baudrate 0 format unused}
+    lrange [::TDSO::Sigrok::command sensor.csv 1000000] 1 end
+} -cleanup {
+    ::TDSO::Sigrok::configure $saved
+} -result {-i sensor.csv -I csv:header=yes:samplerate=1000000 -P am230x:sda=RX:device=am230x}
+
+set fake [makeFile {
+    set fd [open [lindex $argv 0] r]
+    set capture [read $fd]
+    close $fd
+    switch [lindex $argv 1] {
+        success {puts -nonewline $capture}
+        failure {puts stderr {decoder failed}; exit 7}
+        empty {}
+    }
+} {fake sigrok.tcl}]
+rename ::TDSO::Sigrok::command ::TDSO::Sigrok::real_command
+proc ::TDSO::Sigrok::command {filename fs} {
+    return [list [info nameofexecutable] $::fake $filename $::mode]
+}
+proc result_ready {status output} {set ::decoded [list $status $output]}
+proc await_decode {} {
+    set timer [after 10000 {set ::decoded timeout}]
+    vwait ::decoded
+    after cancel $timer
+    return $::decoded
+}
+
+test sigrok-process-1 {Async capture delivery, backpressure and temporary file cleanup} -body {
+    set ::mode success
+    set started [::TDSO::Sigrok::start [list {} {0 128 255} 1000000] result_ready]
+    set files [dict get $::TDSO::Sigrok::job files]
+    set busy [::TDSO::Sigrok::start [list {} {255} 1000000] result_ready]
+    set result [await_decode]
+    list $started $busy $result [lmap f $files {file exists $f}] $::TDSO::Sigrok::job
+} -result {1 0 {ok {RX
+0
+1
+1
+}} {0 0} {}}
+
+test sigrok-process-2 {Nonzero exit and stderr reach the error callback} -body {
+    set ::mode failure
+    ::TDSO::Sigrok::start [list {} {0 255} 1000000] result_ready
+    lassign [await_decode] status output
+    list $status [string match *decoder\ failed* $output] $::TDSO::Sigrok::job
+} -result {error 1 {}}
+
+test sigrok-process-3 {Empty output is a successful decode with no annotations} -body {
+    set ::mode empty
+    ::TDSO::Sigrok::start [list {} {255 255} 1000000] result_ready
+    await_decode
+} -result {ok {}}
+
+rename ::TDSO::Sigrok::command {}
+rename ::TDSO::Sigrok::real_command ::TDSO::Sigrok::command
+::TDSO::Sigrok::configure {executable {} format hex}
+testConstraint sigrok [expr {[info exists ::env(SIGROK_CLI)] && [file isfile $::env(SIGROK_CLI)]}]
+test sigrok-real-uart-1 {Real sigrok decodes a synthesized UART 0x55 at 9600 baud} -constraints sigrok -body {
+    set samples [lrepeat 40 255]
+    foreach bit {0 1 0 1 0 1 0 1 0 1} {
+        lappend samples {*}[lrepeat 10 [expr {$bit ? 255 : 0}]]
+    }
+    lappend samples {*}[lrepeat 40 255]
+    ::TDSO::Sigrok::start [list {} $samples 96000] result_ready
+    lassign [await_decode] status output
+    list $status [string match *55* $output]
+} -result {ok 1}
+test sigrok-real-am230x {Real sensor humidity temperature and checksum} -constraints sigrok -setup {
+    set saved $::TDSO::Sigrok::config
+} -body {
+    ::TDSO::Sigrok::configure {decoders {am230x:sda=RX:device=am230x} annotations {}}
+    # 1 MHz: 55.5 percent and 24.3 C, checksum 0x20.
+    set samples [lrepeat 1000 0]
+    foreach {level count} {255 30 0 80 255 80} {
+        lappend samples {*}[lrepeat $count $level]
+    }
+    foreach byte {2 43 0 243 32} {
+        for {set bit 7} {$bit >= 0} {incr bit -1} {
+            lappend samples {*}[lrepeat 50 0]
+            lappend samples {*}[lrepeat [expr {($byte >> $bit) & 1 ? 70 : 26}] 255]
+        }
+    }
+    lappend samples {*}[lrepeat 50 0] {*}[lrepeat 100 255]
+    ::TDSO::Sigrok::start [list {} $samples 1000000] result_ready
+    lassign [await_decode] status output
+    list $status [string match {*Humidity: 55.5*} $output] \
+        [string match {*Temperature: 24.3*} $output] [string match {*Checksum: OK*} $output]
+} -cleanup {
+    ::TDSO::Sigrok::configure $saved
+} -result {ok 1 1 1}
+
+test sigrok-real-dht11-partial {125 kS/s triggered capture retains all 40 sensor bits} -constraints sigrok -setup {
+    set saved $::TDSO::Sigrok::config
+} -body {
+    ::TDSO::Sigrok::configure {decoders {am230x:sda=RX:device=dht11} annotations {} threshold 150}
+    # Capture begins with one remaining low sample, then release and response.
+    set samples {104}
+    foreach {level count} {184 6 104 6 184 11} {
+        lappend samples {*}[lrepeat $count $level]
+    }
+    foreach byte {62 4 22 2 90} {
+        for {set bit 7} {$bit >= 0} {incr bit -1} {
+            lappend samples {*}[lrepeat 7 104]
+            lappend samples {*}[lrepeat [expr {($byte >> $bit) & 1 ? 9 : 3}] 184]
+        }
+    }
+    lappend samples {*}[lrepeat 6 104] {*}[lrepeat 100 184]
+    ::TDSO::Sigrok::start [list {} $samples 125000] result_ready
+    lassign [await_decode] status output
+    list $status [string match {*7-24 am230x-1: Response*} $output] \
+        [regexp -all {Bit: [01]} $output] [string match {*Humidity: 62.0*} $output] \
+        [string match {*Temperature: 22.0*} $output] [string match {*Checksum: OK*} $output]
+} -cleanup {
+    ::TDSO::Sigrok::configure $saved
+} -result {ok 1 40 1 1 1}
+
+test sigrok-real-dht11-resync {Rejected initial pulse cannot accumulate time into a false start} -constraints sigrok -setup {
+    set saved $::TDSO::Sigrok::config
+} -body {
+    ::TDSO::Sigrok::configure {decoders {am230x:sda=RX:device=dht11} annotations {}}
+    # Reject the first candidate with an overlong response low (160 us).
+    set samples {0}
+    lappend samples {*}[lrepeat 4 255] {*}[lrepeat 20 0]
+    # Later short pulses must not become a start once sample index exceeds 94.
+    for {set i 0} {$i < 40} {incr i} {
+        lappend samples {*}[lrepeat 9 255] {*}[lrepeat 7 0]
+    }
+    # A genuine new start after the noise must still decode correctly.
+    lappend samples {*}[lrepeat 10 255] {*}[lrepeat 125 0] \
+        {*}[lrepeat 4 255] {*}[lrepeat 10 0] {*}[lrepeat 10 255]
+    foreach byte {62 4 22 2 90} {
+        for {set bit 7} {$bit >= 0} {incr bit -1} {
+            lappend samples {*}[lrepeat 7 0]
+            lappend samples {*}[lrepeat [expr {($byte >> $bit) & 1 ? 9 : 3}] 255]
+        }
+    }
+    lappend samples {*}[lrepeat 7 0] {*}[lrepeat 10 255]
+    ::TDSO::Sigrok::start [list {} $samples 125000] result_ready
+    lassign [await_decode] status output
+    list $status [regexp -all {Response} $output] [regexp -all {Bit: [01]} $output] \
+        [string match {*Checksum: OK*} $output]
+} -cleanup {
+    ::TDSO::Sigrok::configure $saved
+} -result {ok 1 40 1}
+
+removeFile {fake sigrok.tcl}
+cleanupTests

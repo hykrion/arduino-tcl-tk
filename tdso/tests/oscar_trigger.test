@@ -1,0 +1,137 @@
+# Headless OSCAR firmware trigger integration through the Factory product.
+package require tcltest 2
+namespace import ::tcltest::*
+set root [file dirname [file dirname [file normalize [info script]]]]
+package provide SerialPort 1.0
+namespace eval SerialPort {
+    variable sent {}
+    proc destroy {} {}
+    proc init {args} {}
+    proc send {value} {lappend ::SerialPort::sent $value}
+    proc set_readable {value} {}
+}
+foreach module {FSM_OSCAR-1.0 OscarDriver-1.0 OscilloscopeState-1.0 OscilloscopeScreen-1.1 OscilloscopeTrigger-1.0} {
+    source [file join $root $module $module.tm]
+}
+foreach {name version} {Tk 8.6 Dialog 1.0 OscThread 1.0 Spectrogram 1.2} {package provide $name $version}
+source [file join $root DriverDevice.tcl]
+source [file join $root TDSO-1.0 TDSO-1.0.tm]
+proc ::TDSO::Ui_display_sync {} {}
+proc ::TDSO::Ui_focus_scope {} {}
+proc ::TDSO::Ui_refresh_run {} {}
+proc ::TDSO::Ui_refresh_trigger_status {} {}
+proc ::OscilloscopeScreen::Draw_trace {points} {}
+proc ::OscilloscopeScreen::Draw_window_preview {adc} {}
+namespace eval OscThread {proc process_adc_data {data} {incr ::analyses}}
+set ::analyses 0
+set ::TDSO::device [::DriverFactory::create oscar fake 115200 1024]
+::TDSO::Apply_device_capabilities
+set ::TDSO::me(signalModel) [::SignalModel::create oscar]
+::OscilloscopeScreen::set_signal_model $::TDSO::me(signalModel)
+foreach {key value} {visualization time triggerMode normal triggerLevel 140 triggerSlope pos triggerPosition 0 zoomT 1} {
+    ::OscilloscopeState::set_value $key $value
+}
+::OscilloscopeTrigger::init normal 140 pos 0
+
+test oscar-start-1 {No commands during UI construction; start enables threshold} -body {
+    ::TDSO::Ui_trigger 140
+    set before $::SerialPort::sent
+    ::TDSO::Start_firmware_trigger
+    list $before $::SerialPort::sent
+} -result {{} l140}
+
+test oscar-frame-1 {Already triggered frames need no second crossing} -body {
+    ::TDSO::frame_ready [lrepeat 1024 150]
+    ::TDSO::frame_ready [lrepeat 1024 150]
+    list $::analyses $::TDSO::me(triggerFirst) [::OscilloscopeTrigger::get_status]
+} -result {2 0 triggered}
+
+test oscar-single-1 {Single holds exactly one frame and rearms} -body {
+    ::TDSO::Set_trigger_mode single
+    ::TDSO::frame_ready [lrepeat 1024 150]
+    ::TDSO::frame_ready [lrepeat 1024 150]
+    set held $::analyses
+    ::TDSO::Set_trigger_rearm
+    ::TDSO::frame_ready [lrepeat 1024 150]
+    list $held $::analyses [::OscilloscopeTrigger::get_status]
+} -result {3 4 hold}
+
+test oscar-fallback-1 {Slope changes stay in firmware; Auto, pretrigger and spectrum disable it} -body {
+    set ::SerialPort::sent {}
+    ::TDSO::Set_trigger_mode auto
+    ::TDSO::Set_trigger_mode normal
+    foreach {key value} {triggerSlope neg triggerSlope pos triggerPosition 50 triggerPosition 0 visualization frequency visualization time} {
+        ::OscilloscopeState::set_value $key $value
+        ::TDSO::Configure_firmware_trigger
+    }
+    set ::SerialPort::sent
+} -result {l0 l140 s0 s1 l0 l140 l0 l140}
+
+test oscar-level-1 {Slider rounds to raw ADC level; zero disables; unchanged value is not resent} -body {
+    set ::SerialPort::sent {}
+    ::TDSO::Ui_trigger 200.4
+    ::TDSO::Ui_trigger 200.2
+    ::TDSO::Ui_trigger 0
+    set ::SerialPort::sent
+} -result {l200 l0}
+
+test oscar-stop-1 {Stop and resume configure acquisition} -body {
+    ::TDSO::Ui_trigger 140
+    set ::SerialPort::sent {}
+    set ::TDSO::me(scopeOnOff) 0
+    ::TDSO::Scope_on_off
+    set ::TDSO::me(scopeOnOff) 1
+    ::TDSO::Scope_on_off
+    set ::SerialPort::sent
+} -result {l0 l140}
+
+test oscar-validation-1 {Bad levels never reach serial} -body {
+    set ::SerialPort::sent {}
+    set result {}
+    foreach value {-1 256 1.5 abc} {lappend result [catch {$::TDSO::device set_trigger $value}]}
+    list $result $::SerialPort::sent
+} -result {{1 1 1 1} {}}
+
+test oscar-falling-1 {Falling selection sends s0, displays capture, and does not resend unchanged slope} -body {
+    set ::SerialPort::sent {}
+    ::OscilloscopeState::set_value triggerSlope neg
+    ::TDSO::Set_trigger_slope
+    ::TDSO::Set_trigger_slope
+    set before $::analyses
+    ::TDSO::frame_ready [lrepeat 1024 130]
+    list $::SerialPort::sent [expr {$::analyses - $before}] $::TDSO::me(triggerFirst)
+} -result {s0 1 0}
+
+test oscar-falling-single-1 {Falling Single holds and rearms without a second edge search} -body {
+    ::TDSO::Set_trigger_mode single
+    set before $::analyses
+    ::TDSO::frame_ready [lrepeat 1024 130]
+    ::TDSO::frame_ready [lrepeat 1024 130]
+    set held [expr {$::analyses - $before}]
+    ::TDSO::Set_trigger_rearm
+    ::TDSO::frame_ready [lrepeat 1024 130]
+    list $held [expr {$::analyses - $before}] [::OscilloscopeTrigger::get_status]
+} -result {1 2 hold}
+
+test oscar-slope-disabled-1 {Slope selected while disabled is sent before enabling threshold} -body {
+    ::TDSO::Ui_trigger 0
+    set ::SerialPort::sent {}
+    ::OscilloscopeState::set_value triggerSlope pos
+    ::TDSO::Set_trigger_slope
+    set disabled $::SerialPort::sent
+    ::TDSO::Ui_trigger 140
+    list $disabled $::SerialPort::sent
+} -result {{} {s1 l140}}
+
+test oscar-slope-validation-1 {Invalid slopes never reach serial transport} -body {
+    set ::SerialPort::sent {}
+    set result {}
+    foreach value {0 1 falling invalid {}} {
+        lappend result [catch {$::TDSO::device set_trigger_slope $value}]
+    }
+    list $result $::SerialPort::sent
+} -result {{1 1 1 1 1} {}}
+
+$::TDSO::device destroy
+$::TDSO::me(signalModel) destroy
+cleanupTests

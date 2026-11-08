@@ -1,0 +1,163 @@
+# Exercise actual Tk startup, serial callback/FSM and canvas rendering.
+package require Tk
+wm withdraw .
+package require tcltest 2
+namespace import ::tcltest::*
+set root [file dirname [file dirname [file normalize [info script]]]]
+set ::incoming {}
+set ::env(TDSO_SESSION_FILE) [makeFile {} dso112a-startup-session.ini]
+set ::env(OSCAR_SETTINGS_FILE) [makeFile {} dso112a-startup-settings.ini]
+proc add_module_path {path} {::tcl::tm::path add [file join $::root $path]}
+foreach module {Dialog-1.0 OscilloscopeState-1.0 OscilloscopeScreen-1.1 OscilloscopeTrigger-1.0 Spectrogram-1.2} {
+    source [file join $root $module $module.tm]
+}
+foreach {name version} {OscThread 1.0 SerialPort 1.0} {
+    package provide $name $version
+}
+namespace eval SerialPort {
+    variable self
+    set self(port) dso112a-test-serial
+    variable sent {}
+    variable readable {}
+    proc init {args} {}
+    proc destroy {} {}
+    proc send {command} {
+        lappend ::SerialPort::sent [binary encode hex $command]
+        if {$command eq "\xFE\xC0\x04\x00\x21"} {
+            set response [binary format cu* [concat {254 192 34 0 49} [lrepeat 30 0]]]
+            after 0 [list ::DSO112AFSM::collect_data $response]
+        }
+        return
+    }
+    proc receive {} {
+        set data $::incoming
+        set ::incoming {}
+        return $data
+    }
+    proc set_readable {callback} {set ::SerialPort::readable $callback}
+}
+rename ::fconfigure ::serial_test_fconfigure
+proc ::fconfigure {channel args} {
+    if {$channel eq "dso112a-test-serial"} {
+        set result {}
+    } else {
+        set result [::serial_test_fconfigure $channel {*}$args]
+    }
+    return $result
+}
+namespace eval OscThread {
+    proc init {args} {}
+    proc set_result_callback {args} {}
+    proc set_window {args} {}
+    proc process_adc_data {data} {set ::analysis $data}
+}
+set ::backgroundErrors {}
+proc bgerror {message} {lappend ::backgroundErrors $message}
+source [file join $root DriverDevice.tcl]
+source [file join $root DriverFactoryModules.tcl]
+source [file join $root TDSO-1.0 TDSO-1.0.tm]
+# Keep preferences in memory; this test must not alter the user's session.
+proc ::TDSO::Session::save {} {return}
+proc ::TDSO::Settings_save {} {return}
+
+test startup-1 {Real DSO112A startup applies capabilities and displays a serial frame} -body {
+    dict set ::TDSO::Session::prefs dso112a.triggerMode normal
+    ::TDSO::init dso112a fake 115200
+    wm withdraw .
+    update idletasks
+    after 4700 {set ::startupReady 1}
+    vwait ::startupReady
+    set ::incoming [binary format cu* [concat {254 192 8 4 50} [lrepeat 1024 100] {0 0 0 0}]]
+    ::DSO112ADriver::Read_serial
+    set canvas .shell.body.left.scope.plot.canvas
+    list $::TDSO::me(SAMPLE_COUNT) [llength [$canvas coords $::OscilloscopeScreen::me(line)]] \
+        [llength [lindex $::analysis 1]] $::backgroundErrors
+} -result {1024 2048 1024 {}}
+
+test startup-trigger-mode-1 {Saved Normal does not contradict the hardware Auto startup} -body {
+    list [OscilloscopeState::get_value triggerMode] \
+        $::TDSO::me(triggerModeDisplay) \
+        [dict get $::DSO112ADriver::cachedParameters $::DSO112ADriver::PARAMETERS(TRIG_MODE)]
+} -result {auto Auto 0}
+
+test startup-spectrum-1 {Actual spectrum switch continues accepting DSO112A captures} -body {
+    set ::SerialPort::sent {}
+    ::OscilloscopeState::set_value spectrum full
+    ::TDSO::Set_spectrum_mode
+    set ::incoming [binary format cu* [concat {254 192 8 4 50} [lrepeat 1024 110] {0 0 0 0}]]
+    ::DSO112ADriver::Read_serial
+    update idletasks
+    list $::SerialPort::sent [lindex $::TDSO::me(displayFrame) 0] $::backgroundErrors
+} -result {{} 110 {}}
+
+# ---------------------------------------------
+proc sigrok_capture_tick {} {
+    incr ::captureTicks
+    eval $::SerialPort::readable
+    set ::captureTimer [after 20 sigrok_capture_tick]
+    return
+}
+
+test startup-sigrok-1 {Opening the real dialog leaves capture and Tk events running} -setup {
+    set ::captureTicks 0
+    wm deiconify .
+    sigrok_capture_tick
+} -body {
+    ::TDSO::Ui_sigrok_open
+    after 250 {set ::dialogReady 1}
+    vwait ::dialogReady
+    list [winfo ismapped .sigrok.options.eexecutable] \
+        [winfo ismapped .sigrok.decode] [winfo ismapped .sigrok.result.text] \
+        [expr {$::captureTicks > 1}] $::TDSO::Sigrok::job $::backgroundErrors
+} -cleanup {
+    after cancel $::captureTimer
+    ::TDSO::Ui_sigrok_close
+    wm withdraw .
+} -result {1 1 1 1 {} {}}
+
+test startup-sigrok-idle-1 {Serial polling continues through silence while the dialog redraws} -setup {
+    wm deiconify .
+} -body {
+    ::TDSO::Ui_sigrok_open
+    set first $::DSO112ADriver::readTimer
+    ::TDSO::Ui_sigrok_open
+    after 160 {set ::idleReady 1}
+    vwait ::idleReady
+    set current $::DSO112ADriver::readTimer
+    set renewed [expr {$current ne $first}]
+    set mapped [winfo ismapped .sigrok.options.ethreshold]
+    ::TDSO::Ui_sigrok_close
+    list $renewed $mapped [expr {$::SerialPort::readable eq {}}] \
+        $::TDSO::Sigrok::job $::backgroundErrors
+} -cleanup {
+    unset -nocomplain ::idleReady
+    wm withdraw .
+} -result {1 1 1 {} {}}
+
+test session-hw-position-1 {Hardware position is restored independently from software pretrigger} -setup {
+    set savedPrefs $::TDSO::Session::prefs
+    set savedPosition $::TDSO::me(hardwareTriggerPosition)
+} -body {
+    set ::TDSO::me(hardwareTriggerPosition) 1/8
+    ::TDSO::Session::save_scope dso112a
+    set ::TDSO::me(hardwareTriggerPosition) 1/2
+    ::TDSO::Session::restore_scope dso112a
+    set restored $::TDSO::me(hardwareTriggerPosition)
+    dict set ::TDSO::Session::prefs dso112a.hardwareTriggerPosition invalid
+    ::TDSO::Session::restore_scope dso112a
+    list $restored $::TDSO::me(hardwareTriggerPosition) \
+        [::TDSO::tr hardware_trigger_position]
+} -cleanup {
+    set ::TDSO::Session::prefs $savedPrefs
+    set ::TDSO::me(hardwareTriggerPosition) $savedPosition
+} -result [list 1/8 1/8 "Posici\u00f3n HW"]
+
+$::TDSO::device destroy
+$::TDSO::me(signalModel) destroy
+foreach timer [after info] {after cancel $timer}
+destroy .
+removeFile dso112a-startup-session.ini
+removeFile dso112a-startup-settings.ini
+rename ::fconfigure {}
+rename ::serial_test_fconfigure ::fconfigure
+cleanupTests
