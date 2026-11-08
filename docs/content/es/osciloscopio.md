@@ -133,6 +133,20 @@ Si tienes un clon también puedes usarlo, pero tendrás que indicar tu puerto se
 Yo recomiendo utilizar Arduino UNO original porque los clones tienden a fallar en su comunicación serie y pueden llegar a dejar de enviar datos al programa. Con el original nunca he tenido ese problema.
 {{% /notice %}}
 
+
+### Ir un poco más allá
+
+Si quieres ir un poco más allá y medir señales AC/DC con diferentes amplitudes, aquí tienes una propuesta de ampliación hardware:
+
+**Divisor de tensión**
+<img src="../../img/divisor-tension.png" width="80%" alt="divisor de tensión">
+
+**Ganancia**
+<img src="../../img/gain-amp.png" width="80%" alt="ganancia variable">
+
+**Seguidor**
+<img src="../../img/save-arduino.png" width="80%" alt="seguidor">
+
 ---
 
 ## <i class="fas fa-flask"></i> No es una caja negra
@@ -174,15 +188,17 @@ Aquí entra en juego **OSCARET**.
 
 La filosofía sigue siendo la misma: utilizar el ordenador para proporcionar capacidades de adquisición, visualización y procesamiento que normalmente asociamos a instrumentos mucho más complejos.
 
-Pero el siguiente paso consiste en añadir un verdadero *front-end* de osciloscopio.
+Pero el siguiente paso consiste en añadir un verdadero *front-end* de osciloscopio junto con el uso de un ADC externo como el CA3306.
 
 {{% notice style="info" title="OSCARET" icon="gauge-high" %}}
 OSCARET conserva la filosofía de OSCAR, pero amplía el hardware para acercarse mucho más al comportamiento de un osciloscopio de sobremesa.
 {{% /notice %}}
 
+<img src="../../img/ca3306-es.png" width="80%" alt="divisor de tensión">
+
 ---
 
-## <i class="fas fa-screwdriver-wrench"></i> Utilizando un DSO183
+## <i class="fas fa-screwdriver-wrench"></i> Utilizando un DSO183 como front-end
 
 ![DSO183](img/dso183.png?width=55%&classes=shadow,border,right)
 
@@ -192,19 +208,7 @@ Por sí mismo ya permite visualizar señales, pero su hardware también puede ap
 
 Al conectarlo al sistema desarrollado en este proyecto, puede convertirse en una especie de **osciloscopio de sobremesa controlado desde el ordenador**.
 
-La ventaja es combinar su electrónica de entrada con capacidades software que el DSO183 original no proporciona.
-
-Por ejemplo:
-
-- una interfaz gráfica más amplia
-- visualización de la señal desde el ordenador
-- almacenamiento de capturas
-- procesamiento posterior de las muestras
-- análisis espectral
-- cálculo automático de medidas
-- exportación de datos
-- generación de ficheros **CSV**
-- utilización de las capturas con otras herramientas de análisis
+La ventaja es combinar su electrónica de entrada con capacidades software que el DSO183 original no proporciona pero sí lo hacen OSCAR y OSCARET.
 
 Una captura deja así de ser simplemente una curva que aparece durante unos segundos en una pequeña pantalla.
 
