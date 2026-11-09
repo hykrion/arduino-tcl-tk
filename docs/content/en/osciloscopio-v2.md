@@ -139,7 +139,7 @@ If you want to go a step further and measure AC/DC signals at different amplitud
 
 ## TDSO user guide with OSCAR
 
-[![TDSO and OSCAR](http://img.youtube.com/vi/bjNNAfSquWY/0.jpg?lightbox=false)](https://youtu.be/bjNNAfSquWY)
+[![TDSO and OSCAR](http://img.youtube.com/vi/Jz-yTQK0qPk/0.jpg?lightbox=false)](https://youtu.be/Jz-yTQK0qPk)
 
 ---
 
