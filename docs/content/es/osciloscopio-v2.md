@@ -27,7 +27,7 @@ De hecho, la idea era esperar hasta la publicación del segundo libro, donde cre
 [^1]: Ya está disponible el control del DSO112A en [TDSO112A](https://sourceforge.net/projects/tdso112a/)
 
 > [!WARNING]
-> Aquí encontrarás información sobre el software que he desarrollado, TDSO, y del que aún no he publicado el libro. Si quieres aprender las bases del funcionamiento (excluyendo espectrograma e integración con Sigrok), puedes consultar [OSCAR y OSCARET]({{< relref "osciloscopio.md" >}})
+> Aquí encontrarás información sobre el software que he desarrollado, TDSO, y del que aún no he publicado el libro. Si quieres aprender las bases del funcionamiento (excluyendo espectrograma e integración con Sigrok), puedes consultar [OSCAR y OSCARET]({{% relref "osciloscopio.md" %}})
 
 {{% button href="https://sourceforge.net/projects/oscar-oscilloscope-arduino/" icon="download" style="primary" %}}Página del proyecto{{% /button %}}
 
@@ -133,7 +133,7 @@ Si no dispones de entorno de desarrollo, he creado un ejecutable para que tambi�
 
 ### Ir un poco más allá
 
-Si quieres ir un poco más allá y medir señales AC/DC con diferentes amplitudes, consulta [OSCAR y OSCARET]({{< relref "osciloscopio.md#ir-un-poco-más-allá" >}}).
+Si quieres ir un poco más allá y medir señales AC/DC con diferentes amplitudes, consulta [OSCAR y OSCARET]({{% relref "osciloscopio.md#ir-un-poco-más-allá" %}}).
 
 ---
 
